@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>스도쿠 v2 (분석모드)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111827;color:#eee;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;user-select:none;overflow:hidden}
+#top{display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+#top button{background:#1e293b;color:#94a3b8;padding:5px 12px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
+#top button:hover{background:#334155;color:#e2e8f0}
+#top button.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+#info{font-size:12px;color:#475569;min-width:60px}
+#timer{font-size:12px;color:#64748b}
+#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:#334155;gap:1px;border:3px solid #94a3b8;border-radius:2px}
+.cell{background:#0f172a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;font-weight:bold;transition:background .1s;position:relative;overflow:hidden}
+.cell.given{color:#cbd5e1}
+.cell.player{color:#60a5fa}
+.cell.error{color:#ef4444 !important}
+.cell.selected{outline:4px solid #fbbf24;outline-offset:-4px;z-index:4;box-shadow:0 0 14px #fbbf24,inset 0 0 0 1px #0f172a;animation:blink-sel 0.9s ease-in-out infinite}
+@keyframes blink-sel{0%,100%{outline-color:#fbbf24;box-shadow:0 0 14px #fbbf24,inset 0 0 0 1px #0f172a}50%{outline-color:#fef3c7;box-shadow:0 0 28px #fbbf24,inset 0 0 0 1px #0f172a}}
+.cell.highlight{box-shadow:inset 0 0 100px rgba(251,191,36,0.2)}
+.cell.same-num{background:#1d4ed8 !important;color:#fff !important;box-shadow:inset 0 0 0 2px #fbbf24}
+/* 난이도 색상 — 정답=파랑, 어려움=빨강, 나머지=회색 */
+.cell.diff-answer{background:#1e40af}  /* 파랑: 정답 (1 후보) */
+.cell.diff-easy{background:#374151}    /* 회색: 2 후보 */
+.cell.diff-mid{background:#374151}     /* 회색: 3 후보 */
+.cell.diff-hard{background:#7f1d1d}    /* 빨강: 어려움 (4+ 후보) */
+/* 흑백 모드 — 명도로 */
+body.bw .cell.diff-answer{background:#9ca3af}
+body.bw .cell.diff-easy{background:#475569}
+body.bw .cell.diff-mid{background:#334155}
+body.bw .cell.diff-hard{background:#6b7280}
+/* X 마크: 라인 아래 — 가는 빨간 대각선 */
+.cell .xmark-svg{position:absolute;inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);pointer-events:none;z-index:1}
+.cell .xmark-svg line{stroke:rgba(239,68,68,0.45);stroke-width:3;stroke-linecap:round}
+/* 라인: X 위로 — activeNumber 행/열의 빈 셀에 가로/세로 */
+.cell.line-row::before{content:'';position:absolute;left:-1px;right:-1px;top:50%;height:3px;background:#60a5fa;transform:translateY(-50%);pointer-events:none;z-index:3;box-shadow:0 0 5px rgba(96,165,250,0.8)}
+.cell.line-col::after{content:'';position:absolute;top:-1px;bottom:-1px;left:50%;width:3px;background:#60a5fa;transform:translateX(-50%);pointer-events:none;z-index:3;box-shadow:0 0 5px rgba(96,165,250,0.8)}
+/* activeNumber 셀 자체 — 채워진 셀이라 라인 X, 강조도 부드럽게 */
+.cell.active-num{color:#fbbf24 !important;text-shadow:0 0 6px #fbbf24}
+#numpad{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-top:12px;width:fit-content}
+.numpad-btn{background:#1e293b;color:#e2e8f0;width:36px;height:36px;border:1px solid #334155;border-radius:4px;cursor:pointer;font-size:16px;font-family:monospace;display:flex;align-items:center;justify-content:center;position:relative}
+.numpad-btn:hover{background:#334155}
+.numpad-btn.done{opacity:0.3}
+.numpad-btn.active{background:#1d4ed8;color:#fff;border-color:#3b82f6}
+.numpad-btn .count{position:absolute;bottom:1px;right:3px;font-size:9px;color:#64748b}
+#pad-status{position:fixed;bottom:8px;right:12px;font-size:10px;color:#1e293b}
+#help{position:fixed;top:50%;right:20px;transform:translateY(-50%);background:rgba(15,23,42,0.95);padding:14px 18px;border-radius:8px;border:1px solid #475569;font-size:11px;color:#cbd5e1;line-height:1.7;z-index:5}
+#help.hidden{display:none}
+#help b{color:#fbbf24}
+#legend{position:fixed;bottom:8px;left:12px;font-size:10px;color:#475569;display:flex;gap:6px;align-items:center}
+#legend.hidden{display:none}
+.lg{display:inline-block;width:14px;height:14px;border-radius:2px;vertical-align:middle;margin-right:2px}
+#complete{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:32px;color:#3b82f6;text-shadow:0 0 30px #3b82f6;display:none;z-index:10;background:rgba(17,24,39,0.9);padding:30px 50px;border-radius:12px;border:1px solid #334155}
+/* 게임 메뉴 (START 버튼으로 열림) */
+#menu{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);padding:18px 24px;border-radius:10px;border:2px solid #3b82f6;z-index:20;min-width:240px;font-size:14px;display:none}
+#menu.show{display:block}
+#menu .title{color:#fbbf24;font-weight:bold;margin-bottom:8px;text-align:center;font-size:12px;letter-spacing:2px}
+#menu .item{padding:8px 12px;margin:2px 0;color:#cbd5e1;cursor:pointer;border-radius:4px;display:flex;justify-content:space-between;align-items:center}
+#menu .item.sel{background:#1d4ed8;color:#fff;outline:1px solid #fbbf24}
+#menu .item.sep{height:1px;background:#334155;margin:6px 0;padding:0}
+#menu .item .v{color:#fbbf24;font-size:11px}
+#menu .hint{margin-top:10px;color:#475569;font-size:10px;text-align:center}
+#actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center}
+#actions button{background:#1e293b;color:#94a3b8;padding:6px 14px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
+#actions button:hover{background:#334155;color:#e2e8f0}
+#actions button.active{background:#fbbf24;color:#111827;border-color:#fbbf24}
+.note-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:100%;height:100%;pointer-events:none;position:relative;z-index:2;opacity:0.55}
+.note-grid span{display:flex;align-items:center;justify-content:center;color:#94a3b8;font-weight:normal}
+.note-grid span.hi{color:#fbbf24;font-weight:bold;opacity:1.6}  /* 선택 숫자만 진하게 */
+</style>
+</head>
+<body>
+<div id="top">
+  <button id="btn-easy">쉬움</button>
+  <button id="btn-medium">중간</button>
+  <button id="btn-hard">어려움</button>
+  <button id="btn-fill">정답1칸</button>
+  <button id="btn-undo">되돌리기</button>
+  <span id="info"></span>
+  <span id="timer">00:00</span>
+</div>
+<div id="board"></div>
+<div id="numpad"></div>
+<div id="actions">
+  <button id="btn-mark">마커 OFF</button>
+  <button id="btn-line">라인 OFF</button>
+  <button id="btn-color">색상 OFF</button>
+  <button id="btn-bw">흑백 OFF</button>
+  <button id="btn-erase">지우기</button>
+  <button id="btn-new">새문제</button>
+  <button id="btn-help">?</button>
+</div>
+<div id="help" class="hidden">
+  <div><b>키보드</b></div>
+  <div>방향키 — 셀 이동</div>
+  <div>1~9 — 숫자 입력</div>
+  <div>0 / Backspace — 지우기</div>
+  <div>L / R — 이전/다음 숫자 셀로 점프</div>
+  <div>M — 마커 자동</div>
+  <div>I — 라인 힌트</div>
+  <div>C — 색상 힌트</div>
+  <div>B — 흑백 모드</div>
+  <div>H — 정답 1칸</div>
+  <div>N — 새 문제</div>
+  <div>Ctrl+Z — 되돌리기</div>
+  <div style="margin-top:8px"><b>마우스</b></div>
+  <div>셀 클릭 — 선택</div>
+  <div>아래 숫자패드 클릭 — 입력</div>
+  <div>우클릭 — 지우기</div>
+</div>
+<div id="legend" class="hidden">
+  <span><span class="lg" style="background:#1e40af"></span>정답</span>
+  <span><span class="lg" style="background:#374151"></span>·</span>
+  <span><span class="lg" style="background:#7f1d1d"></span>어려움</span>
+  <span style="margin-left:8px;color:#fbbf24">━ 라인=활성숫자 행/열</span>
+</div>
+<div id="complete">✓ 완료!</div>
+<div id="menu">
+  <div class="title">─ 메 뉴 ─</div>
+  <div class="item" data-act="new"><span>새 문제</span></div>
+  <div class="item" data-act="easy"><span>쉬움</span></div>
+  <div class="item" data-act="medium"><span>중간</span></div>
+  <div class="item" data-act="hard"><span>어려움</span></div>
+  <div class="item sep"></div>
+  <div class="item" data-act="mark"><span>마커 자동</span><span class="v" id="m-mark">OFF</span></div>
+  <div class="item" data-act="line"><span>라인 힌트</span><span class="v" id="m-line">OFF</span></div>
+  <div class="item" data-act="color"><span>색상 힌트</span><span class="v" id="m-color">OFF</span></div>
+  <div class="item" data-act="bw"><span>흑백 모드</span><span class="v" id="m-bw">OFF</span></div>
+  <div class="item sep"></div>
+  <div class="item" data-act="fill"><span>정답 1칸</span></div>
+  <div class="item" data-act="undo"><span>되돌리기</span></div>
+  <div class="item" data-act="close"><span>닫기</span></div>
+  <div class="hint">스틱↑↓ · A 선택 · B/START 닫기</div>
+</div>
+<div id="pad-status"></div>
+
+<script>
+const EMPTY = 0;
+let board, solution, given, notes, history;
+let selRow = 0, selCol = 0;
+let markLevel = 0;  // 0=OFF, 1=4+, 2=3+, 3=전체
+let modeLine = false, modeColor = false;
+let gameOver = false;
+let activeNumber = 1;  // 현재 활성 숫자 (게임패드 A로 입력될 숫자)
+let difficulty = 36;
+let timerInterval, seconds = 0;
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function isValid(grid, row, col, num) {
+  for (let i = 0; i < 9; i++) {
+    if (grid[row][i] === num) return false;
+    if (grid[i][col] === num) return false;
+  }
+  const br = Math.floor(row / 3) * 3, bc = Math.floor(col / 3) * 3;
+  for (let r = br; r < br + 3; r++)
+    for (let c = bc; c < bc + 3; c++)
+      if (grid[r][c] === num) return false;
+  return true;
+}
+
+function solveSudoku(grid) {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (grid[r][c] === EMPTY) {
+        const nums = shuffle([1,2,3,4,5,6,7,8,9]);
+        for (const n of nums) {
+          if (isValid(grid, r, c, n)) {
+            grid[r][c] = n;
+            if (solveSudoku(grid)) return true;
+            grid[r][c] = EMPTY;
+          }
+        }
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function countSolutions(grid, limit) {
+  let count = 0;
+  function solve(g) {
+    if (count >= limit) return;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (g[r][c] === EMPTY) {
+          for (let n = 1; n <= 9; n++) {
+            if (isValid(g, r, c, n)) {
+              g[r][c] = n;
+              solve(g);
+              g[r][c] = EMPTY;
+            }
+          }
+          return;
+        }
+      }
+    }
+    count++;
+  }
+  solve(grid);
+  return count;
+}
+
+function generatePuzzle(clues) {
+  const sol = Array.from({length:9}, () => Array(9).fill(0));
+  solveSudoku(sol);
+  const puzzle = sol.map(r => [...r]);
+  const positions = shuffle(Array.from({length:81}, (_,i) => [Math.floor(i/9), i%9]));
+  let removed = 0;
+  const target = 81 - clues;
+  for (const [r, c] of positions) {
+    if (removed >= target) break;
+    const backup = puzzle[r][c];
+    puzzle[r][c] = EMPTY;
+    if (countSolutions(puzzle.map(r => [...r]), 2) === 1) {
+      removed++;
+    } else {
+      puzzle[r][c] = backup;
+    }
+  }
+  return { solution: sol, puzzle };
+}
+
+// ─── 분석 함수 ───────────────────────────────────────────
+function getCandidates(r, c) {
+  if (board[r][c]) return [];
+  const used = new Set();
+  for (let i = 0; i < 9; i++) {
+    if (board[r][i]) used.add(board[r][i]);
+    if (board[i][c]) used.add(board[i][c]);
+  }
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let rr = br; rr < br+3; rr++)
+    for (let cc = bc; cc < bc+3; cc++)
+      if (board[rr][cc]) used.add(board[rr][cc]);
+  const out = [];
+  for (let n = 1; n <= 9; n++) if (!used.has(n)) out.push(n);
+  return out;
+}
+
+// hidden single in row: 이 셀의 후보 중 같은 행 다른 빈 셀의 후보에 없는 숫자
+function hiddenSingleRow(r, c, cands) {
+  for (const n of cands) {
+    let only = true;
+    for (let cc = 0; cc < 9; cc++) {
+      if (cc === c) continue;
+      if (!board[r][cc] && getCandidates(r, cc).includes(n)) { only = false; break; }
+    }
+    if (only) return n;
+  }
+  return 0;
+}
+
+function hiddenSingleCol(r, c, cands) {
+  for (const n of cands) {
+    let only = true;
+    for (let rr = 0; rr < 9; rr++) {
+      if (rr === r) continue;
+      if (!board[rr][c] && getCandidates(rr, c).includes(n)) { only = false; break; }
+    }
+    if (only) return n;
+  }
+  return 0;
+}
+
+function diffClass(candCount) {
+  if (candCount === 1) return 'diff-answer';
+  if (candCount === 2) return 'diff-easy';
+  if (candCount === 3) return 'diff-mid';
+  return 'diff-hard';
+}
+
+// activeNumber가 (r,c) 빈 셀에 들어갈 수 있는지
+function canPlaceActive(r, c) {
+  if (board[r][c] || given[r][c]) return false;
+  return isValid(board, r, c, activeNumber);
+}
+
+// activeNumber 들어갈 수 있는 빈 셀들의 좌표
+function activeCandidates() {
+  const cells = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (canPlaceActive(r, c)) cells.push([r, c]);
+  return cells;
+}
+
+// markLevel: 1=4+, 2=3+, 3=전체. 후보 셀 수가 임계값 이상이면 마커 채움
+function refreshAutoNotes() {
+  if (markLevel === 0) return;
+  const minCands = markLevel === 1 ? 4 : markLevel === 2 ? 3 : 1;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++) {
+      if (!board[r][c] && !given[r][c]) {
+        const cands = getCandidates(r, c);
+        notes[r][c] = cands.length >= minCands ? cands : [];
+      } else notes[r][c] = [];
+    }
+}
+
+// ─── 렌더 ────────────────────────────────────────────────
+function render() {
+  if (markLevel > 0) refreshAutoNotes();
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  const cellSize = Math.min(52, Math.floor((Math.min(window.innerWidth - 30, window.innerHeight - 240)) / 9));
+  const selVal = board[selRow][selCol] || 0;
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.width = cellSize + 'px';
+      cell.style.height = cellSize + 'px';
+      cell.style.fontSize = (cellSize * 0.55) + 'px';
+      if (c % 3 === 0 && c > 0) cell.style.borderLeft = '3px solid #94a3b8';
+      if (r % 3 === 0 && r > 0) cell.style.borderTop = '3px solid #94a3b8';
+      const val = board[r][c];
+
+      // 라인 모드: 행/열 막힘 = 라인, 박스만 막힘 = X (스도쿠 룰). selected 빈 셀은 제외
+      const isSelectedEmpty = (r === selRow && c === selCol);
+      if (modeLine && !val && !given[r][c] && !isSelectedEmpty) {
+        let hasInRow = false, hasInCol = false, hasInBox = false;
+        const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+        for (let i = 0; i < 9; i++) {
+          if (board[r][i] === activeNumber) hasInRow = true;
+          if (board[i][c] === activeNumber) hasInCol = true;
+        }
+        for (let rr = br; rr < br+3; rr++)
+          for (let cc = bc; cc < bc+3; cc++)
+            if (board[rr][cc] === activeNumber) hasInBox = true;
+        if (hasInRow) cell.classList.add('line-row');
+        if (hasInCol) cell.classList.add('line-col');
+        // 박스 막힘이지만 행/열은 안 막힘 → X
+        if (hasInBox && !hasInRow && !hasInCol) {
+          cell.classList.add('xmark');
+          cell.insertAdjacentHTML('beforeend',
+            '<svg class="xmark-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+            '<line x1="10" y1="10" x2="90" y2="90"/>' +
+            '<line x1="90" y1="10" x2="10" y2="90"/></svg>');
+        }
+      }
+      // activeNumber 셀 노란 글자
+      if (modeLine && val === activeNumber) {
+        cell.classList.add('active-num');
+      }
+      // 색상 모드: activeNumber 가능 빈 셀 색칠 (불가 셀은 색 없음)
+      if (modeColor && !val && !given[r][c] && canPlaceActive(r, c)) {
+        const candidates = activeCandidates();
+        if (candidates.length === 1) cell.classList.add('diff-answer');
+        else cell.classList.add('diff-easy');
+      }
+
+      if (given[r][c]) {
+        cell.classList.add('given');
+        cell.textContent = val;
+      } else if (val) {
+        cell.classList.add('player');
+        cell.textContent = val;
+        if (val !== solution[r][c]) cell.classList.add('error');
+      } else if (notes[r][c] && notes[r][c].length > 0) {
+        const noteGrid = document.createElement('div');
+        noteGrid.className = 'note-grid';
+        noteGrid.style.fontSize = (cellSize*0.24) + 'px';
+        for (let n = 1; n <= 9; n++) {
+          const sp = document.createElement('span');
+          if (notes[r][c].includes(n)) {
+            sp.textContent = n;
+            if (selVal && n === selVal) sp.classList.add('hi');
+          }
+          noteGrid.appendChild(sp);
+        }
+        cell.appendChild(noteGrid);
+      }
+
+      if (r === selRow && c === selCol) cell.classList.add('selected');
+      else if (!gameOver) {
+        // 같은 행/열/박스 highlight (선택 셀 기준)
+        const sameBox = Math.floor(r/3) === Math.floor(selRow/3) && Math.floor(c/3) === Math.floor(selCol/3);
+        if (r === selRow || c === selCol || sameBox) cell.classList.add('highlight');
+        // 같은 숫자 강조 (선택 셀의 값과 같은 숫자 모두)
+        if (selVal && val === selVal) cell.classList.add('same-num');
+      }
+
+      cell.addEventListener('click', () => selectCell(r, c));
+      cell.addEventListener('contextmenu', e => { e.preventDefault(); if(!gameOver && !given[r][c] && !board[r][c]) eraseCell(); });
+      boardEl.appendChild(cell);
+    }
+  }
+  updateNumpad();
+  updateInfo();
+}
+
+function updateNumpad() {
+  const numpad = document.getElementById('numpad');
+  numpad.innerHTML = '';
+  const selVal = board[selRow][selCol] || 0;
+  for (let n = 1; n <= 9; n++) {
+    const btn = document.createElement('div');
+    btn.className = 'numpad-btn';
+    let count = 0;
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (board[r][c] === n) count++;
+    btn.textContent = n;
+    if (count >= 9) btn.classList.add('done');
+    if (n === activeNumber) btn.classList.add('active');  // 활성 숫자 강조
+    const remain = document.createElement('span');
+    remain.className = 'count';
+    remain.textContent = (9 - count);
+    btn.appendChild(remain);
+    btn.addEventListener('click', () => numpadClick(n));
+    numpad.appendChild(btn);
+  }
+}
+
+function updateInfo() {
+  let filled = 0;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (board[r][c]) filled++;
+  document.getElementById('info').textContent = filled + '/81 · 활성:' + activeNumber;
+}
+
+function setActiveNumber(n) {
+  activeNumber = ((n - 1) % 9 + 9) % 9 + 1; // 1~9 wrap
+  render();
+}
+
+// numpad 클릭 시 activeNumber 변경 + 현재 셀 빈 칸이면 입력
+function numpadClick(n) {
+  setActiveNumber(n);
+  if (!board[selRow][selCol] && !given[selRow][selCol]) placeNumber(n);
+}
+
+function selectCell(r, c) {
+  selRow = r; selCol = c;
+  render();
+}
+
+function placeNumber(n) {
+  if (gameOver || given[selRow][selCol]) return;
+  history.push({ r: selRow, c: selCol, val: board[selRow][selCol], notes: notes[selRow][selCol].slice() });
+  board[selRow][selCol] = n;
+  notes[selRow][selCol] = [];
+  render();
+  checkWin();
+}
+
+function eraseCell() {
+  if (gameOver || given[selRow][selCol]) return;
+  if (!board[selRow][selCol] && (!notes[selRow][selCol] || notes[selRow][selCol].length === 0)) return;
+  history.push({ r: selRow, c: selCol, val: board[selRow][selCol], notes: notes[selRow][selCol].slice() });
+  board[selRow][selCol] = 0;
+  notes[selRow][selCol] = [];  // 마커 모드면 render에서 자동 재생성
+  render();
+}
+
+function undo() {
+  if (history.length === 0 || gameOver) return;
+  const last = history.pop();
+  board[last.r][last.c] = last.val;
+  notes[last.r][last.c] = last.notes;
+  selRow = last.r; selCol = last.c;
+  render();
+}
+
+function fillOne() {
+  if (gameOver) return;
+  const empties = [];
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (!board[r][c] && !given[r][c]) empties.push([r, c]);
+  if (empties.length === 0) return;
+  let target;
+  if (!board[selRow][selCol] && !given[selRow][selCol]) target = [selRow, selCol];
+  else target = empties[Math.floor(Math.random() * empties.length)];
+  history.push({ r: target[0], c: target[1], val: board[target[0]][target[1]], notes: notes[target[0]][target[1]].slice() });
+  board[target[0]][target[1]] = solution[target[0]][target[1]];
+  notes[target[0]][target[1]] = [];
+  given[target[0]][target[1]] = true;
+  selRow = target[0]; selCol = target[1];
+  render();
+  checkWin();
+}
+
+function jumpValue(dir) {
+  // 9개 다 채워진 숫자는 건너뛰기, 가까운 셀로 점프
+  let target = activeNumber + dir;
+  if (target < 1) target = 9;
+  if (target > 9) target = 1;
+  for (let tries = 0; tries < 9; tries++) {
+    // 다깬 숫자(보드에 9개)는 건너뛰기
+    let total = 0;
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        if (board[r][c] === target) total++;
+    if (total < 9) {
+      const cells = [];
+      for (let r = 0; r < 9; r++)
+        for (let c = 0; c < 9; c++)
+          if (board[r][c] === target && (r !== selRow || c !== selCol))
+            cells.push([r, c]);
+      if (cells.length > 0) {
+        cells.sort((a, b) =>
+          (Math.abs(a[0]-selRow) + Math.abs(a[1]-selCol)) -
+          (Math.abs(b[0]-selRow) + Math.abs(b[1]-selCol))
+        );
+        selRow = cells[0][0]; selCol = cells[0][1];
+        activeNumber = target;
+        render();
+        return;
+      } else if (total > 0) {
+        // 셀이 있긴 한데 현재 위치만 있음 (선택 안 바뀜)
+        activeNumber = target;
+        render();
+        return;
+      }
+    }
+    target += dir;
+    if (target < 1) target = 9;
+    if (target > 9) target = 1;
+  }
+}
+
+// 게임패드 A: 빈 셀 = activeNumber 입력 / 채워진 셀 = 그 값을 activeNumber로
+function gpAPress() {
+  if (gameOver) return;
+  if (given[selRow][selCol] || board[selRow][selCol]) {
+    if (board[selRow][selCol]) setActiveNumber(board[selRow][selCol]);
+  } else {
+    placeNumber(activeNumber);
+  }
+}
+
+// ─── 게임 메뉴 ──────────────────────────────────────
+let menuOpen = false;
+let menuIdx = 0;
+function getMenuItems(){ return Array.from(document.querySelectorAll('#menu .item:not(.sep)')); }
+function refreshMenu(){
+  document.getElementById('m-mark').textContent = ['OFF','4+','3+','전체'][markLevel];
+  document.getElementById('m-line').textContent = modeLine ? 'ON' : 'OFF';
+  document.getElementById('m-color').textContent = modeColor ? 'ON' : 'OFF';
+  document.getElementById('m-bw').textContent = document.body.classList.contains('bw') ? 'ON' : 'OFF';
+  const items = getMenuItems();
+  items.forEach((el, i) => el.classList.toggle('sel', i === menuIdx));
+}
+function openMenu(){ menuOpen = true; menuIdx = 0; document.getElementById('menu').classList.add('show'); refreshMenu(); }
+function closeMenu(){ menuOpen = false; document.getElementById('menu').classList.remove('show'); }
+function toggleMenu(){ menuOpen ? closeMenu() : openMenu(); }
+function menuMove(dir){
+  const items = getMenuItems();
+  menuIdx = (menuIdx + dir + items.length) % items.length;
+  refreshMenu();
+}
+function menuSelect(){
+  const items = getMenuItems();
+  const act = items[menuIdx].getAttribute('data-act');
+  if (act === 'new') newGame();
+  else if (act === 'easy') newGame(42);
+  else if (act === 'medium') newGame(36);
+  else if (act === 'hard') newGame(28);
+  else if (act === 'mark') { toggleMark(); refreshMenu(); return; }
+  else if (act === 'line') { toggleLine(); refreshMenu(); return; }
+  else if (act === 'color') { toggleColor(); refreshMenu(); return; }
+  else if (act === 'bw') { toggleBW(); refreshMenu(); return; }
+  else if (act === 'fill') fillOne();
+  else if (act === 'undo') undo();
+  closeMenu();
+}
+// 메뉴 항목 마우스 클릭
+document.querySelectorAll('#menu .item:not(.sep)').forEach((el, i) => {
+  el.addEventListener('click', () => { menuIdx = i; refreshMenu(); menuSelect(); });
+});
+
+function setMode(name, btnId, state) {
+  if (name === 'line') modeLine = state;
+  else if (name === 'color') modeColor = state;
+  const btn = document.getElementById(btnId);
+  btn.textContent = btn.textContent.replace(/(ON|OFF)$/, state ? 'ON' : 'OFF');
+  btn.classList.toggle('active', state);
+  document.getElementById('legend').classList.toggle('hidden', !modeColor && !modeLine);
+  render();
+}
+function toggleMark() {
+  markLevel = (markLevel + 1) % 4;
+  const btn = document.getElementById('btn-mark');
+  const labels = ['마커 OFF', '마커 4+', '마커 3+', '마커 전체'];
+  btn.textContent = labels[markLevel];
+  btn.classList.toggle('active', markLevel > 0);
+  if (markLevel === 0) {
+    notes = Array.from({length:9}, () => Array.from({length:9}, () => []));
+  }
+  render();
+}
+function toggleLine()  { setMode('line',  'btn-line',  !modeLine); }
+function toggleColor() { setMode('color', 'btn-color', !modeColor); }
+
+function checkWin() {
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (board[r][c] !== solution[r][c]) return;
+  gameOver = true;
+  clearInterval(timerInterval);
+  document.getElementById('complete').style.display = 'block';
+  setTimeout(() => { document.getElementById('complete').style.display = 'none'; }, 3000);
+}
+
+function startTimer() {
+  seconds = 0;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    seconds++;
+    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    document.getElementById('timer').textContent = m + ':' + s;
+  }, 1000);
+}
+
+function newGame(d) {
+  difficulty = d || difficulty;
+  gameOver = false;
+  history = [];
+  document.getElementById('complete').style.display = 'none';
+  const { solution: sol, puzzle } = generatePuzzle(difficulty);
+  solution = sol;
+  board = puzzle.map(r => [...r]);
+  given = puzzle.map(r => r.map(v => v !== 0));
+  notes = Array.from({length:9}, () => Array.from({length:9}, () => []));
+  activeNumber = 1;
+  // 시작: 보드에서 1이 있는 첫 셀로 selRow/selCol 이동
+  selRow = 0; selCol = 0;
+  outer: for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (board[r][c] === 1) { selRow = r; selCol = c; break outer; }
+  render();
+  startTimer();
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (gameOver) return;
+  if (e.key >= '1' && e.key <= '9') placeNumber(parseInt(e.key));
+  else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') eraseCell();
+  else if (e.key === 'ArrowUp') { selRow = Math.max(0, selRow - 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowDown') { selRow = Math.min(8, selRow + 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft') { selCol = Math.max(0, selCol - 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { selCol = Math.min(8, selCol + 1); render(); e.preventDefault(); }
+  else if (e.key === 'm' || e.key === 'M') toggleMark();
+  else if (e.key === 'i' || e.key === 'I') toggleLine();
+  else if (e.key === 'c' || e.key === 'C') toggleColor();
+  else if (e.key === 'b' || e.key === 'B') toggleBW();
+  else if (e.key === 'l' || e.key === 'L') jumpValue(-1);
+  else if (e.key === 'r' || e.key === 'R') jumpValue(1);
+  else if (e.key === 'z' && e.ctrlKey) undo();
+  else if (e.key === 'h' || e.key === 'H') fillOne();
+  else if (e.key === 'n' || e.key === 'N') newGame();
+});
+
+// Gamepad
+let gpActive = false, gpRow = 0, gpCol = 0, lastBtn = {};
+let gpAxisCooldown = 0;
+window.addEventListener('gamepadconnected', () => { gpActive = true; document.getElementById('pad-status').textContent = '🎮 패드 연결됨'; });
+window.addEventListener('gamepaddisconnected', () => { gpActive = false; document.getElementById('pad-status').textContent = ''; });
+
+function pollGP() {
+  if (!gpActive) return;
+  const gps = navigator.getGamepads();
+  for (const gp of gps) {
+    if (!gp) continue;
+    const ax = gp.axes[0], ay = gp.axes[1], th = 0.5;
+    let dr = 0, dc = 0;
+    if (ay < -th) dr = -1; else if (ay > th) dr = 1;
+    if (ax < -th) dc = -1; else if (ax > th) dc = 1;
+    if ((dr || dc) && gpAxisCooldown <= 0) {
+      if (menuOpen) {
+        // 메뉴 모드: 스틱 위/아래로 항목 이동
+        if (dr) menuMove(dr);
+      } else {
+        gpRow = Math.max(0, Math.min(8, selRow + dr));
+        gpCol = Math.max(0, Math.min(8, selCol + dc));
+        selRow = gpRow; selCol = gpCol;
+        render();
+      }
+      gpAxisCooldown = 4; // ~200ms
+    }
+    if (gpAxisCooldown > 0) gpAxisCooldown--;
+    // D-pad → 숫자 1-9 (12=up,13=down,14=left,15=right 외에 face/shoulder)
+    // 0=A: 정답1칸, 1=B: 지우기, 2=X: 분석토글, 3=Y: 새문제, 4=LB: undo, 5=RB: 정답1칸
+    const map = [
+      // Y(3) 매핑 제거 — 실수 방지
+      [0, () => menuOpen ? menuSelect() : gpAPress(), 'a'],
+      [1, () => menuOpen ? closeMenu() : eraseCell(), 'b'],
+      [2, () => { if (!menuOpen) toggleMark(); }, 'x'],
+      [4, () => { if (!menuOpen) jumpValue(-1); }, 'lb'],
+      [5, () => { if (!menuOpen) jumpValue(1); }, 'rb'],
+      [8, () => toggleBW(), 'sel'],
+      [9, () => toggleMenu(), 'start'],
+    ];
+    // LT(6)/RT(7) 트리거 — 누르고 있으면 연속 변경 (~200ms). 메뉴 열렸을 땐 무시
+    const ltDown = gp.buttons[6] && gp.buttons[6].pressed;
+    const rtDown = gp.buttons[7] && gp.buttons[7].pressed;
+    if (!window._triggerT) window._triggerT = 0;
+    if ((ltDown || rtDown) && !menuOpen) {
+      window._triggerT++;
+      if (window._triggerT === 1 || window._triggerT % 4 === 0) {
+        setActiveNumber(activeNumber + (rtDown ? 1 : -1));
+      }
+    } else window._triggerT = 0;
+    for (const [b, fn, tag] of map) {
+      const pressed = gp.buttons[b] && gp.buttons[b].pressed;
+      if (pressed && !lastBtn[tag]) { fn(); lastBtn[tag] = 1; }
+      if (!pressed) lastBtn[tag] = 0;
+    }
+  }
+}
+setInterval(pollGP, 50);
+
+// Buttons
+document.getElementById('btn-easy').addEventListener('click', () => newGame(42));
+document.getElementById('btn-medium').addEventListener('click', () => newGame(36));
+document.getElementById('btn-hard').addEventListener('click', () => newGame(28));
+document.getElementById('btn-fill').addEventListener('click', fillOne);
+document.getElementById('btn-undo').addEventListener('click', undo);
+document.getElementById('btn-mark').addEventListener('click', toggleMark);
+document.getElementById('btn-line').addEventListener('click', toggleLine);
+document.getElementById('btn-color').addEventListener('click', toggleColor);
+function toggleBW(){
+  document.body.classList.toggle('bw');
+  const on = document.body.classList.contains('bw');
+  const btn = document.getElementById('btn-bw');
+  btn.textContent = '흑백 ' + (on ? 'ON' : 'OFF');
+  btn.classList.toggle('active', on);
+}
+document.getElementById('btn-bw').addEventListener('click', toggleBW);
+
+document.getElementById('btn-help').addEventListener('click', () => {
+  document.getElementById('help').classList.toggle('hidden');
+});
+document.getElementById('btn-erase').addEventListener('click', eraseCell);
+document.getElementById('btn-new').addEventListener('click', () => newGame());
+
+newGame();
+</script>
+</body>
+</html>

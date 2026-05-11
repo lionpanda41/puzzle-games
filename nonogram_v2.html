@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>네모네모 로직 v2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111827;color:#eee;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;user-select:none;overflow:hidden}
+#top{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+#top button{background:#1e293b;color:#94a3b8;padding:5px 12px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
+#top button:hover{background:#334155;color:#e2e8f0}
+#info{font-size:12px;color:#475569;min-width:80px}
+#timer{font-size:12px;color:#64748b}
+#wrap{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto 1fr;gap:4px}
+#corner{}
+#col-hints{display:grid;grid-template-columns:repeat(20,1fr);gap:1px;font-size:9px;color:#94a3b8;text-align:center;line-height:1.1}
+#col-hints .col{display:flex;flex-direction:column;justify-content:flex-end;padding:2px;background:#0f172a;min-height:80px}
+#col-hints .col span{padding:1px}
+#col-hints .col span.done{color:#475569;text-decoration:line-through}
+#row-hints{display:grid;grid-template-rows:repeat(20,1fr);gap:1px;font-size:9px;color:#94a3b8;line-height:1.1;min-width:80px}
+#row-hints .row{display:flex;align-items:center;justify-content:flex-end;padding:2px;background:#0f172a;gap:3px}
+#row-hints .row span.done{color:#475569;text-decoration:line-through}
+#board{display:grid;grid-template-columns:repeat(20,1fr);grid-template-rows:repeat(20,1fr);background:#334155;gap:1px;border:2px solid #94a3b8;border-radius:2px}
+.cell{background:#0f172a;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:#ef4444;position:relative;transition:background .08s}
+.cell.fill{background:#e2e8f0}
+.cell.x::after{content:'×';color:rgba(239,68,68,0.6);font-weight:bold}
+.cell.selected{outline:3px solid #fbbf24;outline-offset:-3px;z-index:3;animation:blink-sel 0.9s ease-in-out infinite}
+@keyframes blink-sel{0%,100%{box-shadow:0 0 10px #fbbf24}50%{box-shadow:0 0 20px #fbbf24}}
+.cell.highlight{box-shadow:inset 0 0 100px rgba(251,191,36,0.12)}
+/* 5칸 구분선 */
+.cell.div-l{border-left:2px solid #64748b}
+.cell.div-t{border-top:2px solid #64748b}
+#actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+#actions button{background:#1e293b;color:#94a3b8;padding:6px 14px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
+#actions button:hover{background:#334155;color:#e2e8f0}
+#actions button.active{background:#fbbf24;color:#111827}
+#complete{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:32px;color:#3b82f6;text-shadow:0 0 30px #3b82f6;display:none;z-index:10;background:rgba(17,24,39,0.9);padding:30px 50px;border-radius:12px;border:1px solid #334155}
+#picker{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);padding:18px;border-radius:10px;border:1px solid #475569;z-index:20;display:none}
+#picker.show{display:block}
+#picker .pz{display:inline-block;width:100px;background:#1e293b;margin:4px;padding:8px;border-radius:6px;cursor:pointer;text-align:center;font-size:12px}
+#picker .pz:hover{background:#334155}
+#picker .pz canvas{width:80px;height:80px;background:#0f172a;display:block;margin:0 auto 4px;image-rendering:pixelated}
+</style>
+</head>
+<body>
+<div id="top">
+  <button id="btn-new">새 문제</button>
+  <button id="btn-pick">퍼즐 선택</button>
+  <button id="btn-mode">▦ 채우기</button>
+  <button id="btn-erase">지우기</button>
+  <button id="btn-check">검증</button>
+  <button id="btn-reset">리셋</button>
+  <span id="info"></span>
+  <span id="timer">00:00</span>
+</div>
+<div id="wrap">
+  <div id="corner"></div>
+  <div id="col-hints"></div>
+  <div id="row-hints"></div>
+  <div id="board"></div>
+</div>
+<div id="actions">
+  <span style="font-size:10px;color:#64748b">좌클릭=채우기/▤ · 우클릭=× · 드래그 OK · 화살표 이동 · 스페이스 토글 · X키=X모드</span>
+</div>
+<div id="complete">✓ 완성!</div>
+<div id="picker"></div>
+
+<script>
+const SIZE = 20;
+
+// 사전 정의 퍼즐 (20×20 binary, 1=채움)
+function blank() { return Array.from({length:SIZE},()=>new Array(SIZE).fill(0)); }
+function heart() {
+  const g = blank();
+  const data = [
+    "00011100011100000000",
+    "00111110111110000000",
+    "01111111111111000000",
+    "01111111111111000000",
+    "01111111111111000000",
+    "01111111111111000000",
+    "00111111111110000000",
+    "00011111111100000000",
+    "00001111111000000000",
+    "00000111110000000000",
+    "00000011100000000000",
+    "00000001000000000000",
+    "00000000000000000000",
+    "00000000000000000000",
+    "00000000000000000000",
+    "00000000000000000000",
+    "00000000000000000000",
+    "00000000000000000000",
+    "00000000000000000000",
+    "00000000000000000000",
+  ];
+  for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) g[r][c] = +data[r][c];
+  return g;
+}
+function smile() {
+  const g = blank();
+  const data = [
+    "00000111111111100000",
+    "00011000000000011000",
+    "00100000000000000100",
+    "01000000000000000010",
+    "01000000000000000010",
+    "10000110000001100001",
+    "10000110000001100001",
+    "10000000000000000001",
+    "10000000000000000001",
+    "10000000000000000001",
+    "10000110000001100001",
+    "10000001111110000001",
+    "10000000111100000001",
+    "01000000000000000010",
+    "01000000000000000010",
+    "00100000000000000100",
+    "00011000000000011000",
+    "00000111111111100000",
+    "00000000000000000000",
+    "00000000000000000000",
+  ];
+  for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) g[r][c] = +data[r][c];
+  return g;
+}
+function star() {
+  const g = blank();
+  const data = [
+    "00000000011000000000",
+    "00000000011000000000",
+    "00000000111100000000",
+    "00000000111100000000",
+    "00000001111110000000",
+    "11111111111111111111",
+    "11111111111111111111",
+    "01111111111111111110",
+    "00111111111111111100",
+    "00011111111111111000",
+    "00001111111111110000",
+    "00011111111111111000",
+    "00111110000011111100",
+    "01111100000000111110",
+    "11111000000000011111",
+    "11100000000000000111",
+    "10000000000000000001",
+    "00000000000000000000",
+    "00000000000000000000",
+    "00000000000000000000",
+  ];
+  for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) g[r][c] = +data[r][c];
+  return g;
+}
+function cat() {
+  const g = blank();
+  const data = [
+    "01100000000000000110",
+    "01110000000000001110",
+    "01111000000000011110",
+    "01111100000000111110",
+    "00111110000001111100",
+    "00011111111111111000",
+    "00011111111111111000",
+    "00111110011001111100",
+    "00111110011001111100",
+    "00111111111111111100",
+    "00111111111111111100",
+    "00111110000001111100",
+    "00111000111110001100",
+    "00111000111110001100",
+    "00011000111110011000",
+    "00001100000000110000",
+    "00000111111111100000",
+    "00000011111111000000",
+    "00000000111100000000",
+    "00000000011000000000",
+  ];
+  for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) g[r][c] = +data[r][c];
+  return g;
+}
+function flower() {
+  const g = blank();
+  const data = [
+    "00000001110000000000",
+    "00000011111000000000",
+    "00000111111100000000",
+    "00001110001110000000",
+    "01110000000000111000",
+    "11111000000001111100",
+    "11111100000011111100",
+    "11111110001111111100",
+    "01111111111111110000",
+    "00111111111111100000",
+    "00011111111111000000",
+    "00111110001111100000",
+    "01111100000011110000",
+    "01111000000001111000",
+    "00110000110000110000",
+    "00000011111100000000",
+    "00000001111000000000",
+    "00000001111000000000",
+    "00000001111000000000",
+    "00000011111100000000",
+  ];
+  for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) g[r][c] = +data[r][c];
+  return g;
+}
+const PUZZLES = {
+  '하트': heart,
+  '스마일': smile,
+  '별': star,
+  '고양이': cat,
+  '꽃': flower,
+};
+
+let solution = blank();
+let board;  // 0=빈, 1=채움, 2=X
+let selRow = 0, selCol = 0;
+let mode = 'fill';  // 'fill' or 'x'
+let gameOver = false;
+let timerInterval, seconds = 0;
+let dragging = false, dragMode = 0;
+
+function calcHints(grid, isRow) {
+  const out = [];
+  for (let i = 0; i < SIZE; i++) {
+    const hints = [];
+    let run = 0;
+    for (let j = 0; j < SIZE; j++) {
+      const v = isRow ? grid[i][j] : grid[j][i];
+      if (v === 1) run++;
+      else if (run > 0) { hints.push(run); run = 0; }
+    }
+    if (run > 0) hints.push(run);
+    if (hints.length === 0) hints.push(0);
+    out.push(hints);
+  }
+  return out;
+}
+
+function isRowDone(r) {
+  // 사용자가 채운 셀들이 solution과 일치하면 done
+  for (let c = 0; c < SIZE; c++) {
+    const filled = board[r][c] === 1 ? 1 : 0;
+    if (filled !== solution[r][c]) return false;
+  }
+  return true;
+}
+function isColDone(c) {
+  for (let r = 0; r < SIZE; r++) {
+    const filled = board[r][c] === 1 ? 1 : 0;
+    if (filled !== solution[r][c]) return false;
+  }
+  return true;
+}
+
+function renderHints() {
+  const rh = calcHints(solution, true);
+  const ch = calcHints(solution, false);
+  const rowEl = document.getElementById('row-hints');
+  const colEl = document.getElementById('col-hints');
+  rowEl.innerHTML = ''; colEl.innerHTML = '';
+  for (let r = 0; r < SIZE; r++) {
+    const div = document.createElement('div');
+    div.className = 'row';
+    const done = isRowDone(r);
+    rh[r].forEach(n => {
+      const sp = document.createElement('span');
+      sp.textContent = n;
+      if (done && n > 0) sp.classList.add('done');
+      div.appendChild(sp);
+    });
+    rowEl.appendChild(div);
+  }
+  for (let c = 0; c < SIZE; c++) {
+    const div = document.createElement('div');
+    div.className = 'col';
+    const done = isColDone(c);
+    ch[c].forEach(n => {
+      const sp = document.createElement('span');
+      sp.textContent = n;
+      if (done && n > 0) sp.classList.add('done');
+      div.appendChild(sp);
+    });
+    colEl.appendChild(div);
+  }
+}
+
+function render() {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  const cellSize = Math.max(20, Math.min(28, Math.floor((window.innerWidth - 200) / SIZE)));
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.width = cellSize + 'px';
+      cell.style.height = cellSize + 'px';
+      if (c % 5 === 0 && c > 0) cell.classList.add('div-l');
+      if (r % 5 === 0 && r > 0) cell.classList.add('div-t');
+      const v = board[r][c];
+      if (v === 1) cell.classList.add('fill');
+      else if (v === 2) cell.classList.add('x');
+      if (r === selRow && c === selCol) cell.classList.add('selected');
+      else if (r === selRow || c === selCol) cell.classList.add('highlight');
+      // 마우스 이벤트
+      cell.addEventListener('mousedown', e => {
+        e.preventDefault();
+        selRow = r; selCol = c;
+        const right = e.button === 2;
+        const target = right ? 2 : (mode === 'fill' ? 1 : 2);
+        dragMode = (board[r][c] === target) ? 0 : target;
+        board[r][c] = dragMode;
+        dragging = true;
+        renderHints(); render();
+        checkWin();
+      });
+      cell.addEventListener('mouseenter', () => {
+        if (dragging && !gameOver) {
+          board[r][c] = dragMode;
+          selRow = r; selCol = c;
+          renderHints(); render();
+        }
+      });
+      cell.addEventListener('contextmenu', e => e.preventDefault());
+      boardEl.appendChild(cell);
+    }
+  }
+  updateInfo();
+}
+
+document.addEventListener('mouseup', () => { dragging = false; if (board) checkWin(); });
+
+function updateInfo() {
+  let filled = 0, total = 0;
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++) {
+      if (solution[r][c]) total++;
+      if (board[r][c] === 1) filled++;
+    }
+  document.getElementById('info').textContent = filled + '/' + total;
+}
+
+function checkWin() {
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++) {
+      const f = board[r][c] === 1 ? 1 : 0;
+      if (f !== solution[r][c]) return;
+    }
+  gameOver = true;
+  clearInterval(timerInterval);
+  document.getElementById('complete').style.display = 'block';
+  setTimeout(() => document.getElementById('complete').style.display = 'none', 3000);
+}
+
+function startTimer() {
+  seconds = 0;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    seconds++;
+    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    document.getElementById('timer').textContent = m + ':' + s;
+  }, 1000);
+}
+
+function loadPuzzle(name) {
+  solution = PUZZLES[name]();
+  board = blank().map(r => r.map(() => 0));
+  gameOver = false;
+  selRow = 0; selCol = 0;
+  document.getElementById('complete').style.display = 'none';
+  renderHints(); render();
+  startTimer();
+}
+
+function newGame() {
+  const names = Object.keys(PUZZLES);
+  loadPuzzle(names[Math.floor(Math.random() * names.length)]);
+}
+
+function resetBoard() {
+  board = blank();
+  gameOver = false;
+  renderHints(); render();
+  startTimer();
+}
+
+function toggleMode() {
+  mode = mode === 'fill' ? 'x' : 'fill';
+  document.getElementById('btn-mode').textContent = mode === 'fill' ? '▦ 채우기' : '× X모드';
+}
+
+function showPicker() {
+  const el = document.getElementById('picker');
+  el.innerHTML = '';
+  for (const name of Object.keys(PUZZLES)) {
+    const div = document.createElement('div');
+    div.className = 'pz';
+    const cv = document.createElement('canvas');
+    cv.width = 20; cv.height = 20;
+    const ctx = cv.getContext('2d');
+    const sol = PUZZLES[name]();
+    for (let r = 0; r < 20; r++)
+      for (let c = 0; c < 20; c++) {
+        ctx.fillStyle = sol[r][c] ? '#e2e8f0' : '#0f172a';
+        ctx.fillRect(c, r, 1, 1);
+      }
+    div.appendChild(cv);
+    const lbl = document.createElement('div');
+    lbl.textContent = name;
+    div.appendChild(lbl);
+    div.addEventListener('click', () => {
+      loadPuzzle(name);
+      el.classList.remove('show');
+    });
+    el.appendChild(div);
+  }
+  el.classList.add('show');
+}
+
+// 키보드
+document.addEventListener('keydown', e => {
+  if (gameOver) return;
+  if (e.key === 'ArrowUp') { selRow = Math.max(0, selRow - 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowDown') { selRow = Math.min(SIZE-1, selRow + 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft') { selCol = Math.max(0, selCol - 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { selCol = Math.min(SIZE-1, selCol + 1); render(); e.preventDefault(); }
+  else if (e.key === ' ') {
+    const target = mode === 'fill' ? 1 : 2;
+    board[selRow][selCol] = board[selRow][selCol] === target ? 0 : target;
+    renderHints(); render(); checkWin(); e.preventDefault();
+  }
+  else if (e.key === 'x' || e.key === 'X') toggleMode();
+  else if (e.key === 'r' || e.key === 'R') resetBoard();
+  else if (e.key === 'n' || e.key === 'N') newGame();
+});
+
+// 버튼
+document.getElementById('btn-new').addEventListener('click', newGame);
+document.getElementById('btn-pick').addEventListener('click', showPicker);
+document.getElementById('btn-mode').addEventListener('click', toggleMode);
+document.getElementById('btn-erase').addEventListener('click', () => {
+  board[selRow][selCol] = 0;
+  renderHints(); render();
+});
+document.getElementById('btn-check').addEventListener('click', checkWin);
+document.getElementById('btn-reset').addEventListener('click', resetBoard);
+
+// 시작
+newGame();
+</script>
+</body>
+</html>
