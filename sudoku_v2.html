@@ -524,7 +524,12 @@ function render() {
       cell.addEventListener('mouseleave', () => {
         if (hoverNumber) { hoverNumber = 0; render(); }
       });
-      cell.addEventListener('contextmenu', e => { e.preventDefault(); if(!gameOver && !given[r][c] && !board[r][c]) eraseCell(); });
+      cell.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        if (gameOver || given[r][c]) return;
+        selRow = r; selCol = c;
+        eraseCell();
+      });
       boardEl.appendChild(cell);
     }
   }
