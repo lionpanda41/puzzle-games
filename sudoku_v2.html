@@ -242,6 +242,7 @@ let modeLine = false, modeColor = false;
 let gameOver = false;
 let activeNumber = 1;  // 현재 활성 숫자 (0 = 끔)
 let hoverNumber = 0;   // PC 마우스 오버 시 임시 (떼면 0)
+let lockHover = false; // 셀 클릭 시 호버 잠금 (숫자 입력 후 해제)
 let difficulty = 36;
 let timerInterval, seconds = 0;
 
@@ -511,17 +512,19 @@ function render() {
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
 
-      cell.addEventListener('click', () => selectCell(r, c));
-      // 모바일 fallback — touchstart로 selectCell 보장
-      cell.addEventListener('touchstart', e => { e.preventDefault(); selectCell(r, c); }, {passive: false});
-      // 보드 셀 마우스 오버 (PC만) — selected + 라인 미리보기 둘 다 호버 따라감
+      cell.addEventListener('click', () => { lockHover = true; selectCell(r, c); });
+      // 모바일 fallback
+      cell.addEventListener('touchstart', e => { e.preventDefault(); lockHover = true; selectCell(r, c); }, {passive: false});
+      // PC 호버 — lockHover false일 때만 selected 따라감
       cell.addEventListener('mouseenter', () => {
         if ('ontouchstart' in window && navigator.maxTouchPoints > 0) return;
-        selRow = r; selCol = c;  // 노란 행/열 박스 호버 따라가게
+        if (lockHover) return;
+        selRow = r; selCol = c;
         if (board[r][c]) hoverNumber = board[r][c];
         render();
       });
       cell.addEventListener('mouseleave', () => {
+        if (lockHover) return;
         if (hoverNumber) { hoverNumber = 0; render(); }
       });
       cell.addEventListener('contextmenu', e => {
@@ -591,8 +594,9 @@ function placeNumber(n) {
   history.push({ r: selRow, c: selCol, val: board[selRow][selCol], notes: notes[selRow][selCol].slice() });
   board[selRow][selCol] = n;
   notes[selRow][selCol] = [];
-  activeNumber = n;  // 입력한 숫자로 활성 자동 변경
-  hoverNumber = 0;   // hover 잔존 무효화 (입력이 우선)
+  activeNumber = n;
+  hoverNumber = 0;
+  lockHover = false;  // 입력 후 호버 모드 복귀
   render();
   checkWin();
 }
