@@ -108,7 +108,15 @@ body.bw{
 #help{position:fixed;top:50%;right:20px;transform:translateY(-50%);background:rgba(15,23,42,0.95);padding:14px 18px;border-radius:8px;border:1px solid #475569;font-size:11px;color:#cbd5e1;line-height:1.7;z-index:5}
 #help.hidden{display:none}
 #help b{color:#fbbf24}
-#legend{position:fixed;top:50%;left:16px;transform:translateY(-50%);font-size:13px;color:#e2e8f0;display:flex;flex-direction:column;gap:10px;background:rgba(15,23,42,0.85);padding:14px 18px;border-radius:8px;border:1px solid var(--grid-1)}
+#legend{position:fixed;top:50%;left:16px;transform:translateY(-50%);font-size:13px;color:#e2e8f0;display:flex;flex-direction:column;gap:10px;background:rgba(15,23,42,0.85);padding:14px 18px;border-radius:8px;border:1px solid var(--grid-1);z-index:5}
+@media (max-width:768px){
+  #legend{top:auto;bottom:6px;left:6px;right:6px;transform:none;flex-direction:row;flex-wrap:wrap;padding:6px 8px;font-size:10px;gap:6px;background:rgba(15,23,42,0.92)}
+  #legend h4{display:none}
+  #legend .item{gap:3px}
+  #legend .item .nm{min-width:auto;font-size:10px}
+  #legend .item .desc{display:none}
+  #legend .item .lg{width:18px;height:14px}
+}
 #legend.hidden{display:none}
 #legend .item{display:flex;align-items:center;gap:8px}
 #legend .item .lg{display:inline-block;width:28px;height:20px;border-radius:3px;border:1px solid rgba(255,255,255,0.1)}
@@ -550,10 +558,10 @@ function setActiveNumber(n) {
   render();
 }
 
-// numpad 클릭 시 activeNumber 변경 + 현재 셀 빈 칸이면 입력
+// numpad 클릭 시 activeNumber 변경 + given 아니면 입력 (사용자 입력 덮어쓰기 OK)
 function numpadClick(n) {
   setActiveNumber(n);
-  if (!board[selRow][selCol] && !given[selRow][selCol]) placeNumber(n);
+  if (!given[selRow][selCol]) placeNumber(n);
 }
 
 function selectCell(r, c) {
@@ -644,9 +652,11 @@ function jumpValue(dir) {
 // 게임패드 A: 빈 셀 = activeNumber 입력 / 채워진 셀 = 그 값을 activeNumber로
 function gpAPress() {
   if (gameOver) return;
-  if (given[selRow][selCol] || board[selRow][selCol]) {
+  if (given[selRow][selCol]) {
+    // given 셀은 입력 차단, 그 숫자를 activeNumber로
     if (board[selRow][selCol]) setActiveNumber(board[selRow][selCol]);
   } else {
+    // 빈 셀 + 사용자 입력 셀 둘 다 activeNumber로 덮어쓰기
     placeNumber(activeNumber);
   }
 }
