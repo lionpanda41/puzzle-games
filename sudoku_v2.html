@@ -189,22 +189,37 @@ body.bw{
   <div class="hint">변경 즉시 반영 · localStorage 저장 · 새로고침 OK</div>
 </div>
 <div id="help" class="hidden">
-  <div><b>키보드</b></div>
+  <div style="margin-bottom:6px"><b>🎯 추천 흐름 (마우스)</b></div>
+  <div>1) 셀 위로 마우스 이동 → 자동 미리보기</div>
+  <div>2) <b>클릭</b> = 그 셀 잠금 (마우스 떨어져도 유지)</div>
+  <div>3) <b>휠 ↑↓</b> = 활성숫자 변경 (잠긴 위치 그대로)</div>
+  <div>4) 숫자패드 클릭 또는 1~9 키 = 입력</div>
+  <div>5) 같은 셀 다시 클릭 / 우클릭 = 잠금 해제</div>
+
+  <div style="margin-top:10px"><b>⌨️ 키보드</b></div>
   <div>방향키 — 셀 이동</div>
   <div>1~9 — 숫자 입력</div>
+  <div><b>Shift+1~9 — 수동 마커 토글</b> (셀에 후보 추가/제거)</div>
   <div>0 / Backspace — 지우기</div>
-  <div>L / R — 이전/다음 숫자 셀로 점프</div>
-  <div>M — 마커 자동</div>
-  <div>I — 라인 힌트</div>
-  <div>C — 색상 힌트</div>
-  <div>B — 흑백 모드</div>
-  <div>H — 정답 1칸</div>
-  <div>N — 새 문제</div>
-  <div>Ctrl+Z — 되돌리기</div>
-  <div style="margin-top:8px"><b>마우스</b></div>
-  <div>셀 클릭 — 선택</div>
-  <div>아래 숫자패드 클릭 — 입력</div>
-  <div>우클릭 — 지우기</div>
+  <div>L / R — 같은 숫자 셀 사이 점프</div>
+  <div>M — 자동 마커 (OFF → 4+ → 3+ → 전체)</div>
+  <div>I — 라인 힌트 / C — 색상 / B — 흑백</div>
+  <div>H — 정답 1칸 / N — 새 문제 / Ctrl+Z — 되돌리기</div>
+
+  <div style="margin-top:10px"><b>🖱️ 마우스</b></div>
+  <div>좌클릭 — 선택 + 잠금 토글</div>
+  <div>우클릭 — 잠금 풀기 / 빈 셀이면 지우기</div>
+  <div>휠 — 활성숫자 ±1 (9개 다 채워진 숫자는 건너뜀)</div>
+
+  <div style="margin-top:10px"><b>🎮 게임패드</b></div>
+  <div>방향 — 셀 이동 / A — 입력 / B — 지우기</div>
+  <div>LB/RB — 같은 숫자 점프 / LT/RT — 활성숫자 ±1</div>
+  <div>SELECT — 마커 / START — 새 문제</div>
+
+  <div style="margin-top:10px"><b>💡 색상 힌트 의미</b></div>
+  <div>옅은 회색=정답 / 초록=유력(2후보) / 진회=가능(3) / 빨강=어려움(4+)</div>
+
+  <div style="margin-top:10px;font-size:11px;opacity:0.7">화면 클릭 / ESC = 닫기</div>
 </div>
 <div id="legend" class="hidden">
   <h4>━ 색상 ━</h4>
