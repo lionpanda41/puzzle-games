@@ -512,8 +512,11 @@ function render() {
       }
 
       cell.addEventListener('click', () => selectCell(r, c));
-      // 보드 셀 마우스 오버 — 채워진 숫자 있으면 그 숫자로 라인 미리보기
+      // 모바일 fallback — touchstart로 selectCell 보장
+      cell.addEventListener('touchstart', e => { e.preventDefault(); selectCell(r, c); }, {passive: false});
+      // 보드 셀 마우스 오버 (PC만, 터치 디바이스 skip)
       cell.addEventListener('mouseenter', () => {
+        if ('ontouchstart' in window && navigator.maxTouchPoints > 0) return;
         if (board[r][c]) { hoverNumber = board[r][c]; render(); }
       });
       cell.addEventListener('mouseleave', () => {
