@@ -138,6 +138,7 @@ body.bw{
 .cell.diff-answer .note-grid span{color:#1a1a1a;text-shadow:0 0 2px rgba(255,255,255,0.6)}
 .cell.diff-easy .note-grid span,.cell.diff-hard .note-grid span,.cell.diff-mid .note-grid span{color:#f0f0f0;text-shadow:0 0 3px rgba(0,0,0,0.8)}
 .note-grid span.hi{color:#fbbf24;font-weight:bold;opacity:1.6}  /* 선택 숫자만 진하게 */
+.note-grid span.user{color:#fff;font-weight:bold}  /* 수동 입력 노트는 흰색 굵게 */
 </style>
 </head>
 <body>
@@ -254,7 +255,7 @@ body.bw{
 
 <script>
 const EMPTY = 0;
-let board, solution, given, notes, history;
+let board, solution, given, notes, autoNotes, history;
 let selRow = 0, selCol = 0;
 let markLevel = 0;  // 0=OFF, 1=수동, 2=자동4+, 3=자동3+, 4=자동전체
 let modeLine = false, modeColor = false;
@@ -429,14 +430,14 @@ function isActiveHiddenSingle(r, c) {
 
 // markLevel: 1=4+, 2=3+, 3=전체. 후보 셀 수가 임계값 이상이면 마커 채움
 function refreshAutoNotes() {
-  if (markLevel <= 1) return;  // OFF/수동은 notes 건드리지 않음
+  if (markLevel <= 1) return;  // OFF/수동 모드는 autoNotes도 안 채움
   const minCands = markLevel === 2 ? 4 : markLevel === 3 ? 3 : 1;
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++) {
       if (!board[r][c] && !given[r][c]) {
         const cands = getCandidates(r, c);
-        notes[r][c] = cands.length >= minCands ? cands : [];
-      } else notes[r][c] = [];
+        autoNotes[r][c] = cands.length >= minCands ? cands : [];
+      } else autoNotes[r][c] = [];
     }
 }
 
@@ -507,19 +508,25 @@ function render() {
         cell.classList.add('player');
         cell.textContent = val;
         if (val !== solution[r][c]) cell.classList.add('error');
-      } else if (notes[r][c] && notes[r][c].length > 0) {
-        const noteGrid = document.createElement('div');
-        noteGrid.className = 'note-grid';
-        noteGrid.style.fontSize = (cellSize*0.24) + 'px';
-        for (let n = 1; n <= 9; n++) {
-          const sp = document.createElement('span');
-          if (notes[r][c].includes(n)) {
-            sp.textContent = n;
-            if (selVal && n === selVal) sp.classList.add('hi');
+      } else {
+        const userN = notes[r][c] || [];
+        const autoN = autoNotes[r][c] || [];
+        if (userN.length > 0 || autoN.length > 0) {
+          const merged = new Set([...userN, ...autoN]);
+          const noteGrid = document.createElement('div');
+          noteGrid.className = 'note-grid';
+          noteGrid.style.fontSize = (cellSize*0.24) + 'px';
+          for (let n = 1; n <= 9; n++) {
+            const sp = document.createElement('span');
+            if (merged.has(n)) {
+              sp.textContent = n;
+              if (userN.includes(n)) sp.classList.add('user');
+              if (selVal && n === selVal) sp.classList.add('hi');
+            }
+            noteGrid.appendChild(sp);
           }
-          noteGrid.appendChild(sp);
+          cell.appendChild(noteGrid);
         }
-        cell.appendChild(noteGrid);
       }
 
       if (r === selRow && c === selCol) cell.classList.add('selected');
@@ -649,9 +656,9 @@ function placeNumber(n) {
   history.push({ r: selRow, c: selCol, val: board[selRow][selCol], notes: notes[selRow][selCol].slice() });
   board[selRow][selCol] = n;
   notes[selRow][selCol] = [];
+  autoNotes[selRow][selCol] = [];
   activeNumber = n;
   hoverNumber = 0;
-  lockHover = false;  // 입력 후 호버 모드 복귀
   render();
   checkWin();
 }
@@ -661,7 +668,8 @@ function eraseCell() {
   if (!board[selRow][selCol] && (!notes[selRow][selCol] || notes[selRow][selCol].length === 0)) return;
   history.push({ r: selRow, c: selCol, val: board[selRow][selCol], notes: notes[selRow][selCol].slice() });
   board[selRow][selCol] = 0;
-  notes[selRow][selCol] = [];  // 마커 모드면 render에서 자동 재생성
+  notes[selRow][selCol] = [];
+  autoNotes[selRow][selCol] = [];
   render();
 }
 
@@ -687,6 +695,7 @@ function fillOne() {
   history.push({ r: target[0], c: target[1], val: board[target[0]][target[1]], notes: notes[target[0]][target[1]].slice() });
   board[target[0]][target[1]] = solution[target[0]][target[1]];
   notes[target[0]][target[1]] = [];
+  autoNotes[target[0]][target[1]] = [];
   given[target[0]][target[1]] = true;
   selRow = target[0]; selCol = target[1];
   render();
@@ -795,9 +804,9 @@ function toggleMark() {
   const labels = ['마커 OFF', '마커 수동', '마커 4+', '마커 3+', '마커 전체'];
   btn.textContent = labels[markLevel];
   btn.classList.toggle('active', markLevel > 0);
-  // 수동/OFF 진입 시 자동 모드가 채워둔 노트 모두 클리어 → 백지에서 시작
+  // 자동 모드 끄면 autoNotes만 비움. 사용자 수동 노트(notes)는 항상 보존
   if (markLevel === 0 || markLevel === 1) {
-    notes = Array.from({length:9}, () => Array.from({length:9}, () => []));
+    autoNotes = Array.from({length:9}, () => Array.from({length:9}, () => []));
   }
   render();
 }
@@ -835,6 +844,7 @@ function newGame(d) {
   board = puzzle.map(r => [...r]);
   given = puzzle.map(r => r.map(v => v !== 0));
   notes = Array.from({length:9}, () => Array.from({length:9}, () => []));
+  autoNotes = Array.from({length:9}, () => Array.from({length:9}, () => []));
   activeNumber = 1;
   // 시작: 보드에서 1이 있는 첫 셀로 selRow/selCol 이동
   selRow = 0; selCol = 0;
@@ -1047,6 +1057,7 @@ function resetBoard() {
     for (let c = 0; c < 9; c++)
       if (!given[r][c]) board[r][c] = 0;
   notes = Array.from({length:9}, () => Array.from({length:9}, () => []));
+  autoNotes = Array.from({length:9}, () => Array.from({length:9}, () => []));
   history = [];
   gameOver = false;
   document.getElementById('complete').style.display = 'none';
