@@ -261,7 +261,7 @@ let markLevel = 0;  // 0=OFF, 1=수동, 2=자동4+, 3=자동3+, 4=자동전체
 let modeLine = false, modeColor = false;
 let gameOver = false;
 let activeNumber = 1;  // 현재 활성 숫자 (0 = 끔)
-let hoverNumber = 0;   // PC 마우스 오버 시 임시 (떼면 0)
+let lockHover = false;  // 좌클릭 시 true → 호버 selected 따라옴 차단
 let lockHover = false; // 셀 클릭 시 호버 잠금 (숫자 입력 후 해제)
 let difficulty = 36;
 let timerInterval, seconds = 0;
@@ -535,18 +535,19 @@ function render() {
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
 
-      // 좌클릭:
-      //  - given(고정) 셀: 그 숫자 활성화 (강조만, 덮어쓰기 금지)
-      //  - player 셀에 활성숫자와 같은 값: 그대로 (강조)
+      // 좌클릭: selected 그 셀에 고정(lockHover) + 입력
+      //  - given: 그 숫자 활성화만 (덮어쓰기 금지)
+      //  - player 셀에 활성숫자와 같은 값: 그대로 (강조 유지)
       //  - player 셀에 다른 값: 활성숫자로 덮어쓰기
       //  - 빈 셀: 활성숫자 입력 (수동 모드면 노트 추가)
       const cellClick = () => {
         if (gameOver) return;
         selRow = r; selCol = c;
+        lockHover = true;  // 클릭 시점에 호버 모드 잠금
         if (given[r][c]) {
           setActiveNumber(given[r][c]);
         } else if (board[r][c] === activeNumber) {
-          render();  // 같은 숫자 — 강조 유지
+          render();
         } else if (activeNumber > 0) {
           if (markLevel === 1 && !board[r][c]) addNote(activeNumber);
           else placeNumber(activeNumber);
@@ -556,16 +557,18 @@ function render() {
       };
       cell.addEventListener('click', cellClick);
       cell.addEventListener('touchstart', e => { e.preventDefault(); cellClick(); }, {passive: false});
-      // PC 호버 — 마우스 위치로 selected 이동 (activeNumber는 안 건드림)
+      // PC 호버 — lockHover false 일 때만 selected 따라감
       cell.addEventListener('mouseenter', () => {
         if ('ontouchstart' in window && navigator.maxTouchPoints > 0) return;
+        if (lockHover) return;
         selRow = r; selCol = c;
         render();
       });
-      // 우클릭: 빈 셀이면 지우기 (노트만 있어도 지움). 채워진/고정 셀은 무시.
+      // 우클릭: 잠긴 상태 → 잠금만 해제 (호버 모드 복귀). 잠금 풀린 상태에서 빈/player 셀이면 지우기.
       cell.addEventListener('contextmenu', e => {
         e.preventDefault();
         if (gameOver) return;
+        if (lockHover) { lockHover = false; render(); return; }
         selRow = r; selCol = c;
         if (!given[r][c]) eraseCell();
       });
@@ -848,20 +851,22 @@ function newGame(d) {
   startTimer();
 }
 
-// Keyboard
+// Keyboard — e.code 기반 (NumLock/Shift/IME 영향 없음, numpad 키도 정상 동작)
 document.addEventListener('keydown', e => {
   if (gameOver) return;
-  if (e.shiftKey && e.key >= '!' && e.key <= ')') {
-    // Shift+1..9 = 수동 노트 토글 (자동 마커 OFF 시 유지됨)
-    const shiftMap = {'!':1,'@':2,'#':3,'$':4,'%':5,'^':6,'&':7,'*':8,'(':9};
-    const n = shiftMap[e.key]; if (n) toggleNote(n);
+  // 숫자 1~9: Digit1..9 또는 Numpad1..9 (NumLock OFF여도 e.code는 동일)
+  const m = e.code && e.code.match(/^(?:Digit|Numpad)([1-9])$/);
+  if (m) {
+    const n = parseInt(m[1]);
+    if (e.shiftKey) toggleNote(n);         // Shift+숫자 = 노트 토글(제거 가능)
+    else if (markLevel === 1) addNote(n);  // 수동 마커 모드 = 노트 추가만
+    else placeNumber(n);                   // 일반 = 입력
+    e.preventDefault();
     return;
   }
-  if (e.key >= '1' && e.key <= '9') {
-    if (markLevel === 1) addNote(parseInt(e.key));
-    else placeNumber(parseInt(e.key));
+  if (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === 'Backspace' || e.key === 'Delete') {
+    eraseCell(); e.preventDefault(); return;
   }
-  else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') eraseCell();
   else if (e.key === 'ArrowUp') { selRow = Math.max(0, selRow - 1); render(); e.preventDefault(); }
   else if (e.key === 'ArrowDown') { selRow = Math.min(8, selRow + 1); render(); e.preventDefault(); }
   else if (e.key === 'ArrowLeft') { selCol = Math.max(0, selCol - 1); render(); e.preventDefault(); }
