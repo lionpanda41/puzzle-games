@@ -839,6 +839,7 @@ document.addEventListener('keydown', e => {
 document.getElementById('board').addEventListener('wheel', e => {
   if (gameOver) return;
   e.preventDefault();
+  hoverNumber = 0;  // hover 잔존 무효화 (라인이 새 activeNumber 따르게)
   jumpValue(e.deltaY < 0 ? 1 : -1);
 }, {passive: false});
 
