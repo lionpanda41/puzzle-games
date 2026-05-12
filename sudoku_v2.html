@@ -795,7 +795,8 @@ function toggleMark() {
   const labels = ['마커 OFF', '마커 수동', '마커 4+', '마커 3+', '마커 전체'];
   btn.textContent = labels[markLevel];
   btn.classList.toggle('active', markLevel > 0);
-  if (markLevel === 0) {
+  // 수동/OFF 진입 시 자동 모드가 채워둔 노트 모두 클리어 → 백지에서 시작
+  if (markLevel === 0 || markLevel === 1) {
     notes = Array.from({length:9}, () => Array.from({length:9}, () => []));
   }
   render();
