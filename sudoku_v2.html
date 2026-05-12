@@ -443,9 +443,6 @@ function refreshAutoNotes() {
 
 // ─── 렌더 ────────────────────────────────────────────────
 function render() {
-  // hover 시 임시 activeNumber 사용 (떼면 원복)
-  const savedActive = activeNumber;
-  if (hoverNumber > 0) activeNumber = hoverNumber;
   if (markLevel >= 2) refreshAutoNotes();
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
@@ -538,42 +535,26 @@ function render() {
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
 
-      // 좌클릭: 빈 셀=즉시 입력 (수동 모드면 노트 토글), 채워진 셀=그 숫자를 활성화
-      cell.addEventListener('click', () => {
+      // 좌클릭: 빈 셀=즉시 입력 (수동 모드면 노트 추가만), 채워진 셀=그 숫자를 활성화
+      const cellClick = () => {
         if (gameOver) return;
         selRow = r; selCol = c;
         if (given[r][c] || board[r][c]) {
           setActiveNumber(board[r][c] || given[r][c]);
         } else if (activeNumber > 0) {
-          if (markLevel === 1) toggleNote(activeNumber);
+          if (markLevel === 1) addNote(activeNumber);
           else placeNumber(activeNumber);
         } else {
           render();
         }
-      });
-      // 모바일 fallback — 동일 동작
-      cell.addEventListener('touchstart', e => {
-        e.preventDefault();
-        if (gameOver) return;
-        selRow = r; selCol = c;
-        if (given[r][c] || board[r][c]) {
-          setActiveNumber(board[r][c] || given[r][c]);
-        } else if (activeNumber > 0) {
-          if (markLevel === 1) toggleNote(activeNumber);
-          else placeNumber(activeNumber);
-        } else {
-          render();
-        }
-      }, {passive: false});
-      // PC 호버 — 마우스 위치로 selected 이동
+      };
+      cell.addEventListener('click', cellClick);
+      cell.addEventListener('touchstart', e => { e.preventDefault(); cellClick(); }, {passive: false});
+      // PC 호버 — 마우스 위치로 selected 이동 (activeNumber는 안 건드림)
       cell.addEventListener('mouseenter', () => {
         if ('ontouchstart' in window && navigator.maxTouchPoints > 0) return;
         selRow = r; selCol = c;
-        if (board[r][c]) hoverNumber = board[r][c];
         render();
-      });
-      cell.addEventListener('mouseleave', () => {
-        if (hoverNumber) { hoverNumber = 0; render(); }
       });
       // 우클릭: 빈 셀이면 지우기 (노트만 있어도 지움). 채워진/고정 셀은 무시.
       cell.addEventListener('contextmenu', e => {
@@ -587,7 +568,6 @@ function render() {
   }
   updateNumpad();
   updateInfo();
-  activeNumber = savedActive;  // hover 임시 변경 원복
 }
 
 function updateNumpad() {
@@ -627,11 +607,11 @@ function setActiveNumber(n) {
   render();
 }
 
-// numpad 클릭 — 수동 모드면 노트 토글, 아니면 set + 입력
+// numpad 클릭 — 수동 모드면 노트 추가만, 아니면 set + 입력
 function numpadClick(n) {
   setActiveNumber(n);
   if (given[selRow][selCol]) return;
-  if (markLevel === 1) toggleNote(n);
+  if (markLevel === 1) addNote(n);
   else placeNumber(n);
 }
 
@@ -640,7 +620,15 @@ function selectCell(r, c) {
   render();
 }
 
-// 수동 노트 토글 (Shift+숫자 또는 수동 모드에서 numpad/숫자키)
+// 노트 추가 (있으면 noop) — 좌클릭/숫자키
+function addNote(n) {
+  if (gameOver || given[selRow][selCol] || board[selRow][selCol]) return;
+  if (!notes[selRow][selCol]) notes[selRow][selCol] = [];
+  if (!notes[selRow][selCol].includes(n)) notes[selRow][selCol].push(n);
+  activeNumber = n;
+  render();
+}
+// 노트 토글 (Shift+숫자 — 개별 노트 제거용)
 function toggleNote(n) {
   if (gameOver || given[selRow][selCol] || board[selRow][selCol]) return;
   if (!notes[selRow][selCol]) notes[selRow][selCol] = [];
@@ -658,7 +646,6 @@ function placeNumber(n) {
   notes[selRow][selCol] = [];
   autoNotes[selRow][selCol] = [];
   activeNumber = n;
-  hoverNumber = 0;
   render();
   checkWin();
 }
@@ -865,7 +852,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (e.key >= '1' && e.key <= '9') {
-    if (markLevel === 1) toggleNote(parseInt(e.key));
+    if (markLevel === 1) addNote(parseInt(e.key));
     else placeNumber(parseInt(e.key));
   }
   else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') eraseCell();
@@ -891,7 +878,6 @@ document.addEventListener('wheel', e => {
   const inNumpad = document.getElementById('numpad').contains(e.target);
   if (!inBoard && !inNumpad) return;
   e.preventDefault();
-  hoverNumber = 0;
   const dir = e.deltaY < 0 ? 1 : -1;
   let target = activeNumber + dir;
   for (let i = 0; i < 9; i++) {
