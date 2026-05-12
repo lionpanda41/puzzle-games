@@ -240,7 +240,8 @@ let selRow = 0, selCol = 0;
 let markLevel = 0;  // 0=OFF, 1=4+, 2=3+, 3=전체
 let modeLine = false, modeColor = false;
 let gameOver = false;
-let activeNumber = 1;  // 현재 활성 숫자 (게임패드 A로 입력될 숫자)
+let activeNumber = 1;  // 현재 활성 숫자 (0 = 끔)
+let hoverNumber = 0;   // PC 마우스 오버 시 임시 (떼면 0)
 let difficulty = 36;
 let timerInterval, seconds = 0;
 
@@ -421,6 +422,9 @@ function refreshAutoNotes() {
 
 // ─── 렌더 ────────────────────────────────────────────────
 function render() {
+  // hover 시 임시 activeNumber 사용 (떼면 원복)
+  const savedActive = activeNumber;
+  if (hoverNumber > 0) activeNumber = hoverNumber;
   if (markLevel > 0) refreshAutoNotes();
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
@@ -437,9 +441,9 @@ function render() {
       if (r % 3 === 0 && r > 0) cell.style.borderTop = '4px solid var(--grid-3x3)';
       const val = board[r][c];
 
-      // 라인 모드: 행/열 막힘 = 라인, 박스만 막힘 = X (스도쿠 룰). selected 빈 셀은 제외
+      // 라인 모드: 행/열 막힘 = 라인, 박스만 막힘 = X. activeNumber=0이면 OFF
       const isSelectedEmpty = (r === selRow && c === selCol);
-      if (modeLine && !val && !given[r][c] && !isSelectedEmpty) {
+      if (modeLine && activeNumber > 0 && !val && !given[r][c] && !isSelectedEmpty) {
         let hasInRow = false, hasInCol = false, hasInBox = false;
         const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
         for (let i = 0; i < 9; i++) {
@@ -461,10 +465,10 @@ function render() {
         }
       }
       // activeNumber 셀 노란 글자
-      if (modeLine && val === activeNumber) {
+      if (modeLine && activeNumber > 0 && val === activeNumber) {
         cell.classList.add('active-num');
       }
-      // 색상 모드: 후보 수 색상 + activeNumber 기준 정답이면 파랑 우선
+      // 색상 모드: 후보 수 색상 + activeNumber 기준 정답이면 파랑 우선. activeNumber=0이면 후보수만
       if (modeColor && !val && !given[r][c]) {
         const len = getCandidates(r, c).length;
         let cls;
@@ -472,8 +476,7 @@ function render() {
         else if (len === 2) cls = 'diff-easy';
         else if (len === 3) cls = 'diff-mid';
         else cls = 'diff-hard';
-        // activeNumber 기준 hidden single이면 정답(파랑)으로 덮어쓰기
-        if (canPlaceActive(r, c) && isActiveHiddenSingle(r, c)) cls = 'diff-answer';
+        if (activeNumber > 0 && canPlaceActive(r, c) && isActiveHiddenSingle(r, c)) cls = 'diff-answer';
         cell.classList.add(cls);
       }
 
@@ -515,6 +518,7 @@ function render() {
   }
   updateNumpad();
   updateInfo();
+  activeNumber = savedActive;  // hover 임시 변경 원복
 }
 
 function updateNumpad() {
@@ -536,6 +540,8 @@ function updateNumpad() {
     remain.textContent = (9 - count);
     btn.appendChild(remain);
     btn.addEventListener('click', () => numpadClick(n));
+    btn.addEventListener('mouseenter', () => { hoverNumber = n; render(); });
+    btn.addEventListener('mouseleave', () => { hoverNumber = 0; render(); });
     numpad.appendChild(btn);
   }
 }
@@ -549,12 +555,17 @@ function updateInfo() {
 }
 
 function setActiveNumber(n) {
-  activeNumber = ((n - 1) % 9 + 9) % 9 + 1; // 1~9 wrap
+  if (n === 0) activeNumber = 0;
+  else activeNumber = ((n - 1) % 9 + 9) % 9 + 1;
   render();
 }
 
-// numpad 클릭 시 activeNumber 변경 + given 아니면 입력 (사용자 입력 덮어쓰기 OK)
+// numpad 클릭 — 같은 숫자 또 누르면 0(끔), 다르면 set + 입력
 function numpadClick(n) {
+  if (activeNumber === n) {
+    setActiveNumber(0);
+    return;
+  }
   setActiveNumber(n);
   if (!given[selRow][selCol]) placeNumber(n);
 }
