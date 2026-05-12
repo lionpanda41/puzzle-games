@@ -615,6 +615,16 @@ function selectCell(r, c) {
   render();
 }
 
+// 수동 노트 토글 (Shift+숫자)
+function toggleNote(n) {
+  if (gameOver || given[selRow][selCol] || board[selRow][selCol]) return;
+  if (!notes[selRow][selCol]) notes[selRow][selCol] = [];
+  const idx = notes[selRow][selCol].indexOf(n);
+  if (idx >= 0) notes[selRow][selCol].splice(idx, 1);
+  else notes[selRow][selCol].push(n);
+  render();
+}
+
 function placeNumber(n) {
   if (gameOver || given[selRow][selCol]) return;
   history.push({ r: selRow, c: selCol, val: board[selRow][selCol], notes: notes[selRow][selCol].slice() });
@@ -818,6 +828,12 @@ function newGame(d) {
 // Keyboard
 document.addEventListener('keydown', e => {
   if (gameOver) return;
+  if (e.shiftKey && e.key >= '!' && e.key <= ')') {
+    // Shift+1..9 = 수동 노트 토글 (자동 마커 OFF 시 유지됨)
+    const shiftMap = {'!':1,'@':2,'#':3,'$':4,'%':5,'^':6,'&':7,'*':8,'(':9};
+    const n = shiftMap[e.key]; if (n) toggleNote(n);
+    return;
+  }
   if (e.key >= '1' && e.key <= '9') placeNumber(parseInt(e.key));
   else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') eraseCell();
   else if (e.key === 'ArrowUp') { selRow = Math.max(0, selRow - 1); render(); e.preventDefault(); }
@@ -835,7 +851,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'n' || e.key === 'N') newGame();
 });
 
-// 마우스 휠 — activeNumber ±1 + 가까운 셀 점프 (보드 또는 numpad 위에서)
+// 마우스 휠 — activeNumber만 변경 (selRow/selCol 그대로, 9개 채워진 숫자 건너뛰기)
 document.addEventListener('wheel', e => {
   if (gameOver) return;
   const inBoard = document.getElementById('board').contains(e.target);
@@ -843,7 +859,16 @@ document.addEventListener('wheel', e => {
   if (!inBoard && !inNumpad) return;
   e.preventDefault();
   hoverNumber = 0;
-  jumpValue(e.deltaY < 0 ? 1 : -1);
+  const dir = e.deltaY < 0 ? 1 : -1;
+  let target = activeNumber + dir;
+  for (let i = 0; i < 9; i++) {
+    if (target < 1) target = 9;
+    if (target > 9) target = 1;
+    let total = 0;
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (board[r][c] === target) total++;
+    if (total < 9) { setActiveNumber(target); return; }
+    target += dir;
+  }
 }, {passive: false});
 
 // Gamepad
