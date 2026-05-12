@@ -110,12 +110,7 @@ body.bw{
 #help b{color:#fbbf24}
 #legend{position:fixed;top:50%;left:16px;transform:translateY(-50%);font-size:13px;color:#e2e8f0;display:flex;flex-direction:column;gap:10px;background:rgba(15,23,42,0.85);padding:14px 18px;border-radius:8px;border:1px solid var(--grid-1);z-index:5}
 @media (max-width:768px){
-  #legend{top:auto;bottom:6px;left:6px;right:6px;transform:none;flex-direction:row;flex-wrap:wrap;padding:6px 8px;font-size:10px;gap:6px;background:rgba(15,23,42,0.92)}
-  #legend h4{display:none}
-  #legend .item{gap:3px}
-  #legend .item .nm{min-width:auto;font-size:10px}
-  #legend .item .desc{display:none}
-  #legend .item .lg{width:18px;height:14px}
+  #legend{display:none !important}  /* 모바일에선 범례 숨김 (보드 우선) */
 }
 #legend.hidden{display:none}
 #legend .item{display:flex;align-items:center;gap:8px}
