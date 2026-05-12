@@ -5,39 +5,88 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>스도쿠 v2 (분석모드)</title>
 <style>
+:root{
+  /* Nord palette — 눈 편한 북유럽 다크 테마 */
+  --diff-answer:#a5adb8;  /* 어두운 회백: 정답 */
+  --diff-easy:#5e7d4a;    /* 어두운 녹색: 유력 */
+  --diff-mid:#4c566a;     /* nord3: 가능 (중간 회색) */
+  --diff-hard:#8a4448;    /* 어두운 빨강: 어려움 */
+  --line:#88c0d0;         /* nord8: 라인 (옅은 청록) */
+  --xmark:#bf616a;        /* nord11 */
+  --selected:#ebcb8b;     /* nord13: 노랑 */
+  --highlight:#ebcb8b;
+  --given:#d8dee9;        /* nord4 */
+  --player:#88c0d0;       /* nord8 */
+  --error:#bf616a;
+  --note:#4c566a;
+  --bg:#2e3440;           /* nord0: 가장 어두운 배경 */
+  --cell:#3b4252;         /* nord1: 셀 */
+  --grid-3x3:#4c566a;     /* nord3 */
+  --grid-1:#434c5e;       /* nord2 */
+  --board-border:#4c566a;
+  --same-num:#5e81ac;     /* nord10 */
+}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#111827;color:#eee;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;user-select:none;overflow:hidden}
+body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;user-select:none;overflow:hidden}
 #top{display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;justify-content:center}
 #top button{background:#1e293b;color:#94a3b8;padding:5px 12px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
 #top button:hover{background:#334155;color:#e2e8f0}
 #top button.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
 #info{font-size:12px;color:#475569;min-width:60px}
 #timer{font-size:12px;color:#64748b}
-#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:#334155;gap:1px;border:3px solid #94a3b8;border-radius:2px}
-.cell{background:#0f172a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;font-weight:bold;transition:background .1s;position:relative;overflow:hidden}
-.cell.given{color:#cbd5e1}
-.cell.player{color:#60a5fa}
-.cell.error{color:#ef4444 !important}
-.cell.selected{outline:4px solid #fbbf24;outline-offset:-4px;z-index:4;box-shadow:0 0 14px #fbbf24,inset 0 0 0 1px #0f172a;animation:blink-sel 0.9s ease-in-out infinite}
-@keyframes blink-sel{0%,100%{outline-color:#fbbf24;box-shadow:0 0 14px #fbbf24,inset 0 0 0 1px #0f172a}50%{outline-color:#fef3c7;box-shadow:0 0 28px #fbbf24,inset 0 0 0 1px #0f172a}}
-.cell.highlight{box-shadow:inset 0 0 100px rgba(251,191,36,0.2)}
-.cell.same-num{background:#1d4ed8 !important;color:#fff !important;box-shadow:inset 0 0 0 2px #fbbf24}
-/* 난이도 색상 — 정답=파랑, 어려움=빨강, 나머지=회색 */
-.cell.diff-answer{background:#1e40af}  /* 파랑: 정답 (1 후보) */
-.cell.diff-easy{background:#374151}    /* 회색: 2 후보 */
-.cell.diff-mid{background:#374151}     /* 회색: 3 후보 */
-.cell.diff-hard{background:#7f1d1d}    /* 빨강: 어려움 (4+ 후보) */
+#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:var(--grid-1);gap:1px;border:3px solid var(--board-border);border-radius:2px}
+.cell{
+  background-color:var(--cell);
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 6px 6px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;font-weight:bold;transition:background-color .1s;position:relative;overflow:hidden
+}
+.cell.given{color:var(--given);background-image:none}
+.cell.player{color:var(--player);background-image:none}
+.cell.error{color:var(--error) !important}
+.cell.selected{outline:4px solid var(--selected);outline-offset:-4px;z-index:4;box-shadow:0 0 14px var(--selected),inset 0 0 0 1px var(--cell);animation:blink-sel 0.9s ease-in-out infinite}
+@keyframes blink-sel{0%,100%{box-shadow:0 0 14px var(--selected),inset 0 0 0 1px var(--cell)}50%{box-shadow:0 0 28px var(--selected),inset 0 0 0 1px var(--cell)}}
+.cell.highlight{box-shadow:inset 0 0 100px rgba(251,191,36,0.15)}
+.cell.in-sel-row{box-shadow:inset 0 0 100px rgba(251,191,36,0.15),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight)}
+.cell.in-sel-col{box-shadow:inset 0 0 100px rgba(251,191,36,0.15),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
+.cell.in-sel-row.in-sel-col{box-shadow:inset 0 0 100px rgba(251,191,36,0.25),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
+.cell.same-num{background:var(--same-num) !important;color:#fff !important;box-shadow:inset 0 0 0 2px var(--selected)}
+/* 난이도 색상 — CSS 변수 (개발자 모드로 변경 가능) */
+.cell.diff-answer{background-color:var(--diff-answer);color:#0f172a !important}
+.cell.diff-easy{background-color:var(--diff-easy)}
+.cell.diff-mid{background-color:var(--diff-mid)}
+.cell.diff-hard{background-color:var(--diff-hard)}
+.cell.diff-answer.player,.cell.diff-answer.given{color:#0f172a !important}
 /* 흑백 모드 — 명도로 */
-body.bw .cell.diff-answer{background:#9ca3af}
-body.bw .cell.diff-easy{background:#475569}
-body.bw .cell.diff-mid{background:#334155}
-body.bw .cell.diff-hard{background:#6b7280}
-/* X 마크: 라인 아래 — 가는 빨간 대각선 */
+body.bw{
+  /* 어두운 다크 모드 — 전체 밝기 낮춤 */
+  --diff-answer:#787878;
+  --diff-easy:#555555;
+  --diff-mid:#2a2a2a;
+  --diff-hard:#3a3a3a;
+  --line:#909090;
+  --xmark:#707070;
+  --selected:#a0a0a0;
+  --highlight:#a0a0a0;
+  --given:#888888;
+  --player:#707070;
+  --error:#808080;
+  --note:#505050;
+  --same-num:#353535;
+  --bg:#000000;
+  --cell:#141414;
+  --grid-3x3:#606060;
+  --grid-1:#1f1f1f;
+  --board-border:#606060;
+}
+/* X 마크 */
 .cell .xmark-svg{position:absolute;inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);pointer-events:none;z-index:1}
-.cell .xmark-svg line{stroke:rgba(239,68,68,0.45);stroke-width:3;stroke-linecap:round}
-/* 라인: X 위로 — activeNumber 행/열의 빈 셀에 가로/세로 */
-.cell.line-row::before{content:'';position:absolute;left:-1px;right:-1px;top:50%;height:3px;background:#60a5fa;transform:translateY(-50%);pointer-events:none;z-index:3;box-shadow:0 0 5px rgba(96,165,250,0.8)}
-.cell.line-col::after{content:'';position:absolute;top:-1px;bottom:-1px;left:50%;width:3px;background:#60a5fa;transform:translateX(-50%);pointer-events:none;z-index:3;box-shadow:0 0 5px rgba(96,165,250,0.8)}
+.cell .xmark-svg line{stroke:var(--xmark);stroke-width:3;stroke-linecap:round;opacity:0.7}
+/* 라인 */
+.cell.line-row::before{content:'';position:absolute;left:-1px;right:-1px;top:50%;height:3px;background:var(--line);transform:translateY(-50%);pointer-events:none;z-index:3;box-shadow:0 0 5px var(--line)}
+.cell.line-col::after{content:'';position:absolute;top:-1px;bottom:-1px;left:50%;width:3px;background:var(--line);transform:translateX(-50%);pointer-events:none;z-index:3;box-shadow:0 0 5px var(--line)}
 /* activeNumber 셀 자체 — 채워진 셀이라 라인 X, 강조도 부드럽게 */
 .cell.active-num{color:#fbbf24 !important;text-shadow:0 0 6px #fbbf24}
 #numpad{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-top:12px;width:fit-content}
@@ -47,12 +96,25 @@ body.bw .cell.diff-hard{background:#6b7280}
 .numpad-btn.active{background:#1d4ed8;color:#fff;border-color:#3b82f6}
 .numpad-btn .count{position:absolute;bottom:1px;right:3px;font-size:9px;color:#64748b}
 #pad-status{position:fixed;bottom:8px;right:12px;font-size:10px;color:#1e293b}
+#dev{position:fixed;top:50%;right:20px;transform:translateY(-50%);background:rgba(15,23,42,0.97);padding:14px 18px;border-radius:8px;border:2px solid #fbbf24;font-size:12px;color:#cbd5e1;z-index:25;min-width:240px;max-height:90vh;overflow-y:auto}
+#dev.hidden{display:none}
+#dev .title{color:#fbbf24;font-weight:bold;margin-bottom:10px;text-align:center;font-size:11px;letter-spacing:2px}
+#dev .row{display:flex;justify-content:space-between;align-items:center;margin:5px 0;gap:8px}
+#dev .row label{flex:1;font-size:11px}
+#dev .row input[type=color]{width:50px;height:24px;border:1px solid #475569;background:#1e293b;cursor:pointer;border-radius:3px;padding:0}
+#dev button{background:#1e293b;color:#cbd5e1;border:1px solid #475569;border-radius:4px;padding:5px 12px;cursor:pointer;font-family:monospace;font-size:11px;margin:6px 4px 0 0}
+#dev button:hover{background:#334155}
+#dev .hint{margin-top:8px;color:#475569;font-size:10px;line-height:1.5}
 #help{position:fixed;top:50%;right:20px;transform:translateY(-50%);background:rgba(15,23,42,0.95);padding:14px 18px;border-radius:8px;border:1px solid #475569;font-size:11px;color:#cbd5e1;line-height:1.7;z-index:5}
 #help.hidden{display:none}
 #help b{color:#fbbf24}
-#legend{position:fixed;bottom:8px;left:12px;font-size:10px;color:#475569;display:flex;gap:6px;align-items:center}
+#legend{position:fixed;top:50%;left:16px;transform:translateY(-50%);font-size:13px;color:#e2e8f0;display:flex;flex-direction:column;gap:10px;background:rgba(15,23,42,0.85);padding:14px 18px;border-radius:8px;border:1px solid var(--grid-1)}
 #legend.hidden{display:none}
-.lg{display:inline-block;width:14px;height:14px;border-radius:2px;vertical-align:middle;margin-right:2px}
+#legend .item{display:flex;align-items:center;gap:8px}
+#legend .item .lg{display:inline-block;width:28px;height:20px;border-radius:3px;border:1px solid rgba(255,255,255,0.1)}
+#legend .item .nm{font-weight:bold;min-width:55px}
+#legend .item .desc{font-size:10px;color:#94a3b8}
+#legend h4{font-size:10px;color:#fbbf24;letter-spacing:2px;margin-bottom:2px}
 #complete{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:32px;color:#3b82f6;text-shadow:0 0 30px #3b82f6;display:none;z-index:10;background:rgba(17,24,39,0.9);padding:30px 50px;border-radius:12px;border:1px solid #334155}
 /* 게임 메뉴 (START 버튼으로 열림) */
 #menu{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);padding:18px 24px;border-radius:10px;border:2px solid #3b82f6;z-index:20;min-width:240px;font-size:14px;display:none}
@@ -68,7 +130,7 @@ body.bw .cell.diff-hard{background:#6b7280}
 #actions button:hover{background:#334155;color:#e2e8f0}
 #actions button.active{background:#fbbf24;color:#111827;border-color:#fbbf24}
 .note-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:100%;height:100%;pointer-events:none;position:relative;z-index:2;opacity:0.55}
-.note-grid span{display:flex;align-items:center;justify-content:center;color:#94a3b8;font-weight:normal}
+.note-grid span{display:flex;align-items:center;justify-content:center;color:var(--note);font-weight:normal}
 .note-grid span.hi{color:#fbbf24;font-weight:bold;opacity:1.6}  /* 선택 숫자만 진하게 */
 </style>
 </head>
@@ -90,8 +152,35 @@ body.bw .cell.diff-hard{background:#6b7280}
   <button id="btn-color">색상 OFF</button>
   <button id="btn-bw">흑백 OFF</button>
   <button id="btn-erase">지우기</button>
+  <button id="btn-reset">초기화</button>
   <button id="btn-new">새문제</button>
   <button id="btn-help">?</button>
+  <button id="btn-dev">🎨</button>
+</div>
+<div id="dev" class="hidden">
+  <div class="title">🎨 개발자 모드 — 색상</div>
+  <div class="row"><label>정답 (1후보)</label><input type="color" data-var="--diff-answer"></div>
+  <div class="row"><label>유력 (2)</label><input type="color" data-var="--diff-easy"></div>
+  <div class="row"><label>가능 (3)</label><input type="color" data-var="--diff-mid"></div>
+  <div class="row"><label>어려움 (4+)</label><input type="color" data-var="--diff-hard"></div>
+  <div class="row"><label>라인</label><input type="color" data-var="--line"></div>
+  <div class="row"><label>X 마크</label><input type="color" data-var="--xmark"></div>
+  <div class="row"><label>선택 outline</label><input type="color" data-var="--selected"></div>
+  <div class="row"><label>행/열 강조</label><input type="color" data-var="--highlight"></div>
+  <div class="row"><label>given 글자</label><input type="color" data-var="--given"></div>
+  <div class="row"><label>player 글자</label><input type="color" data-var="--player"></div>
+  <div class="row"><label>error 글자</label><input type="color" data-var="--error"></div>
+  <div class="row"><label>마커 글자</label><input type="color" data-var="--note"></div>
+  <div class="row"><label>같은숫자 배경</label><input type="color" data-var="--same-num"></div>
+  <div class="row"><label>배경(전체)</label><input type="color" data-var="--bg"></div>
+  <div class="row"><label>빈 셀</label><input type="color" data-var="--cell"></div>
+  <div class="row"><label>3×3 구분</label><input type="color" data-var="--grid-3x3"></div>
+  <div class="row"><label>셀 갭</label><input type="color" data-var="--grid-1"></div>
+  <div class="row"><label>보드 외곽</label><input type="color" data-var="--board-border"></div>
+  <button id="dev-reset">기본값 복원</button>
+  <button id="dev-export">설정 복사</button>
+  <button id="dev-close">닫기</button>
+  <div class="hint">변경 즉시 반영 · localStorage 저장 · 새로고침 OK</div>
 </div>
 <div id="help" class="hidden">
   <div><b>키보드</b></div>
@@ -112,10 +201,13 @@ body.bw .cell.diff-hard{background:#6b7280}
   <div>우클릭 — 지우기</div>
 </div>
 <div id="legend" class="hidden">
-  <span><span class="lg" style="background:#1e40af"></span>정답</span>
-  <span><span class="lg" style="background:#374151"></span>·</span>
-  <span><span class="lg" style="background:#7f1d1d"></span>어려움</span>
-  <span style="margin-left:8px;color:#fbbf24">━ 라인=활성숫자 행/열</span>
+  <h4>━ 색상 ━</h4>
+  <div class="item"><span class="lg" style="background:var(--diff-answer)"></span><span class="nm">정답</span><span class="desc">1후보</span></div>
+  <div class="item"><span class="lg" style="background:var(--diff-easy)"></span><span class="nm">유력</span><span class="desc">2후보</span></div>
+  <div class="item"><span class="lg" style="background:var(--diff-mid)"></span><span class="nm">가능</span><span class="desc">3후보</span></div>
+  <div class="item"><span class="lg" style="background:var(--diff-hard)"></span><span class="nm">어려움</span><span class="desc">4+</span></div>
+  <div class="item" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--grid-1)"><span style="color:var(--line);font-weight:bold">━</span><span class="desc">라인=활성숫자 행/열</span></div>
+  <div class="item"><span style="color:var(--xmark);font-weight:bold">×</span><span class="desc">박스에 활성숫자 있음</span></div>
 </div>
 <div id="complete">✓ 완료!</div>
 <div id="menu">
@@ -132,6 +224,7 @@ body.bw .cell.diff-hard{background:#6b7280}
   <div class="item sep"></div>
   <div class="item" data-act="fill"><span>정답 1칸</span></div>
   <div class="item" data-act="undo"><span>되돌리기</span></div>
+  <div class="item" data-act="reset"><span>초기화 (입력 다 비움)</span></div>
   <div class="item" data-act="close"><span>닫기</span></div>
   <div class="hint">스틱↑↓ · A 선택 · B/START 닫기</div>
 </div>
@@ -295,6 +388,21 @@ function activeCandidates() {
   return cells;
 }
 
+// (r,c)가 activeNumber에 대해 hidden single인지: 행/열/박스 중 어느 하나에서 (r,c)만 4 가능
+function isActiveHiddenSingle(r, c) {
+  if (!canPlaceActive(r, c)) return false;
+  let rowCount = 0, colCount = 0, boxCount = 0;
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let i = 0; i < 9; i++) {
+    if (canPlaceActive(r, i)) rowCount++;
+    if (canPlaceActive(i, c)) colCount++;
+  }
+  for (let rr = br; rr < br+3; rr++)
+    for (let cc = bc; cc < bc+3; cc++)
+      if (canPlaceActive(rr, cc)) boxCount++;
+  return rowCount === 1 || colCount === 1 || boxCount === 1;
+}
+
 // markLevel: 1=4+, 2=3+, 3=전체. 후보 셀 수가 임계값 이상이면 마커 채움
 function refreshAutoNotes() {
   if (markLevel === 0) return;
@@ -322,8 +430,8 @@ function render() {
       cell.style.width = cellSize + 'px';
       cell.style.height = cellSize + 'px';
       cell.style.fontSize = (cellSize * 0.55) + 'px';
-      if (c % 3 === 0 && c > 0) cell.style.borderLeft = '3px solid #94a3b8';
-      if (r % 3 === 0 && r > 0) cell.style.borderTop = '3px solid #94a3b8';
+      if (c % 3 === 0 && c > 0) cell.style.borderLeft = '4px solid var(--grid-3x3)';
+      if (r % 3 === 0 && r > 0) cell.style.borderTop = '4px solid var(--grid-3x3)';
       const val = board[r][c];
 
       // 라인 모드: 행/열 막힘 = 라인, 박스만 막힘 = X (스도쿠 룰). selected 빈 셀은 제외
@@ -353,11 +461,17 @@ function render() {
       if (modeLine && val === activeNumber) {
         cell.classList.add('active-num');
       }
-      // 색상 모드: activeNumber 가능 빈 셀 색칠 (불가 셀은 색 없음)
-      if (modeColor && !val && !given[r][c] && canPlaceActive(r, c)) {
-        const candidates = activeCandidates();
-        if (candidates.length === 1) cell.classList.add('diff-answer');
-        else cell.classList.add('diff-easy');
+      // 색상 모드: 후보 수 색상 + activeNumber 기준 정답이면 파랑 우선
+      if (modeColor && !val && !given[r][c]) {
+        const len = getCandidates(r, c).length;
+        let cls;
+        if (len === 1) cls = 'diff-answer';
+        else if (len === 2) cls = 'diff-easy';
+        else if (len === 3) cls = 'diff-mid';
+        else cls = 'diff-hard';
+        // activeNumber 기준 hidden single이면 정답(파랑)으로 덮어쓰기
+        if (canPlaceActive(r, c) && isActiveHiddenSingle(r, c)) cls = 'diff-answer';
+        cell.classList.add(cls);
       }
 
       if (given[r][c]) {
@@ -384,10 +498,10 @@ function render() {
 
       if (r === selRow && c === selCol) cell.classList.add('selected');
       else if (!gameOver) {
-        // 같은 행/열/박스 highlight (선택 셀 기준)
-        const sameBox = Math.floor(r/3) === Math.floor(selRow/3) && Math.floor(c/3) === Math.floor(selCol/3);
-        if (r === selRow || c === selCol || sameBox) cell.classList.add('highlight');
-        // 같은 숫자 강조 (선택 셀의 값과 같은 숫자 모두)
+        // 행/열 외곽 박스만 (3×3 박스 제거)
+        if (r === selRow) cell.classList.add('in-sel-row');
+        if (c === selCol) cell.classList.add('in-sel-col');
+        // 같은 숫자 강조
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
 
@@ -494,17 +608,18 @@ function fillOne() {
 }
 
 function jumpValue(dir) {
-  // 9개 다 채워진 숫자는 건너뛰기, 가까운 셀로 점프
+  // 9개 다 채워진 숫자만 건너뛰기. 그 외는 activeNumber 무조건 변경
   let target = activeNumber + dir;
   if (target < 1) target = 9;
   if (target > 9) target = 1;
   for (let tries = 0; tries < 9; tries++) {
-    // 다깬 숫자(보드에 9개)는 건너뛰기
     let total = 0;
     for (let r = 0; r < 9; r++)
       for (let c = 0; c < 9; c++)
         if (board[r][c] === target) total++;
     if (total < 9) {
+      // activeNumber 변경 (target 셀 있으면 거기로, 없으면 위치 유지)
+      activeNumber = target;
       const cells = [];
       for (let r = 0; r < 9; r++)
         for (let c = 0; c < 9; c++)
@@ -516,15 +631,9 @@ function jumpValue(dir) {
           (Math.abs(b[0]-selRow) + Math.abs(b[1]-selCol))
         );
         selRow = cells[0][0]; selCol = cells[0][1];
-        activeNumber = target;
-        render();
-        return;
-      } else if (total > 0) {
-        // 셀이 있긴 한데 현재 위치만 있음 (선택 안 바뀜)
-        activeNumber = target;
-        render();
-        return;
       }
+      render();
+      return;
     }
     target += dir;
     if (target < 1) target = 9;
@@ -575,6 +684,7 @@ function menuSelect(){
   else if (act === 'bw') { toggleBW(); refreshMenu(); return; }
   else if (act === 'fill') fillOne();
   else if (act === 'undo') undo();
+  else if (act === 'reset') resetBoard();
   closeMenu();
 }
 // 메뉴 항목 마우스 클릭
@@ -746,6 +856,91 @@ document.getElementById('btn-bw').addEventListener('click', toggleBW);
 document.getElementById('btn-help').addEventListener('click', () => {
   document.getElementById('help').classList.toggle('hidden');
 });
+
+// ─── 개발자 모드 (색상 커스터마이징) ─────────────────────
+const DEFAULT_COLORS = {
+  '--diff-answer': '#a5adb8',
+  '--diff-easy': '#5e7d4a',
+  '--diff-mid': '#4c566a',
+  '--diff-hard': '#8a4448',
+  '--line': '#88c0d0',
+  '--xmark': '#bf616a',
+  '--selected': '#ebcb8b',
+  '--highlight': '#ebcb8b',
+  '--given': '#d8dee9',
+  '--player': '#88c0d0',
+  '--error': '#bf616a',
+  '--note': '#4c566a',
+  '--same-num': '#5e81ac',
+  '--bg': '#2e3440',
+  '--cell': '#3b4252',
+  '--grid-3x3': '#4c566a',
+  '--grid-1': '#434c5e',
+  '--board-border': '#4c566a',
+};
+function loadColors() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem('sudoku-colors') || '{}'); } catch (e) {}
+  for (const k of Object.keys(DEFAULT_COLORS)) {
+    const v = saved[k] || DEFAULT_COLORS[k];
+    document.documentElement.style.setProperty(k, v);
+    const inp = document.querySelector(`#dev input[data-var="${k}"]`);
+    if (inp) inp.value = v;
+  }
+}
+function saveColors() {
+  const data = {};
+  document.querySelectorAll('#dev input[type=color]').forEach(inp => {
+    data[inp.getAttribute('data-var')] = inp.value;
+  });
+  localStorage.setItem('sudoku-colors', JSON.stringify(data));
+}
+document.querySelectorAll('#dev input[type=color]').forEach(inp => {
+  inp.addEventListener('input', () => {
+    const k = inp.getAttribute('data-var');
+    document.documentElement.style.setProperty(k, inp.value);
+    saveColors();
+    render();
+  });
+});
+document.getElementById('btn-dev').addEventListener('click', () => {
+  document.getElementById('dev').classList.toggle('hidden');
+});
+document.getElementById('dev-close').addEventListener('click', () => {
+  document.getElementById('dev').classList.add('hidden');
+});
+document.getElementById('dev-reset').addEventListener('click', () => {
+  localStorage.removeItem('sudoku-colors');
+  loadColors();
+  render();
+});
+document.getElementById('dev-export').addEventListener('click', () => {
+  const data = {};
+  document.querySelectorAll('#dev input[type=color]').forEach(inp => {
+    data[inp.getAttribute('data-var')] = inp.value;
+  });
+  navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+  alert('현재 색상 설정이 클립보드에 복사됨');
+});
+loadColors();
+function resetBoard() {
+  // given 유지, 사용자 입력만 다 비움
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (!given[r][c]) board[r][c] = 0;
+  notes = Array.from({length:9}, () => Array.from({length:9}, () => []));
+  history = [];
+  gameOver = false;
+  document.getElementById('complete').style.display = 'none';
+  activeNumber = 1;
+  selRow = 0; selCol = 0;
+  outer: for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (board[r][c] === 1) { selRow = r; selCol = c; break outer; }
+  startTimer();
+  render();
+}
+document.getElementById('btn-reset').addEventListener('click', resetBoard);
 document.getElementById('btn-erase').addEventListener('click', eraseCell);
 document.getElementById('btn-new').addEventListener('click', () => newGame());
 
