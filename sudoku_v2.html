@@ -514,10 +514,12 @@ function render() {
       cell.addEventListener('click', () => selectCell(r, c));
       // 모바일 fallback — touchstart로 selectCell 보장
       cell.addEventListener('touchstart', e => { e.preventDefault(); selectCell(r, c); }, {passive: false});
-      // 보드 셀 마우스 오버 (PC만, 터치 디바이스 skip)
+      // 보드 셀 마우스 오버 (PC만) — selected + 라인 미리보기 둘 다 호버 따라감
       cell.addEventListener('mouseenter', () => {
         if ('ontouchstart' in window && navigator.maxTouchPoints > 0) return;
-        if (board[r][c]) { hoverNumber = board[r][c]; render(); }
+        selRow = r; selCol = c;  // 노란 행/열 박스 호버 따라가게
+        if (board[r][c]) hoverNumber = board[r][c];
+        render();
       });
       cell.addEventListener('mouseleave', () => {
         if (hoverNumber) { hoverNumber = 0; render(); }
