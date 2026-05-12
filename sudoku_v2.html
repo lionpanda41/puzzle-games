@@ -548,10 +548,15 @@ function render() {
       cell.addEventListener('contextmenu', e => {
         e.preventDefault();
         if (gameOver) return;
+        // 잠긴 같은 셀에 우클릭 = 해제만 (지우기 X)
+        if (lockHover && selRow === r && selCol === c) {
+          lockHover = false;
+          render();
+          return;
+        }
+        // 그 외 = 지우기
         selRow = r; selCol = c;
         if (!given[r][c]) eraseCell();
-        lockHover = false;  // 우클릭 = 지우기 + 고정 해제 (호버 복귀)
-        render();
       });
       boardEl.appendChild(cell);
     }
