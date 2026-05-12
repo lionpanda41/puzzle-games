@@ -199,10 +199,11 @@ body.bw{
   <div style="margin-top:10px"><b>⌨️ 키보드</b></div>
   <div>방향키 — 셀 이동</div>
   <div>1~9 — 숫자 입력</div>
-  <div><b>Shift+1~9 — 수동 마커 토글</b> (셀에 후보 추가/제거)</div>
+  <div><b>Shift+1~9</b> — 수동 마커 토글 (자동 마커 모드와 무관)</div>
+  <div><b>마커 수동 모드</b>: 그냥 1~9 또는 패드 클릭 = 노트 토글</div>
   <div>0 / Backspace — 지우기</div>
   <div>L / R — 같은 숫자 셀 사이 점프</div>
-  <div>M — 자동 마커 (OFF → 4+ → 3+ → 전체)</div>
+  <div>M — 마커 cycle (OFF → 4+ → 3+ → 전체 → 수동)</div>
   <div>I — 라인 힌트 / C — 색상 / B — 흑백</div>
   <div>H — 정답 1칸 / N — 새 문제 / Ctrl+Z — 되돌리기</div>
 
@@ -255,7 +256,7 @@ body.bw{
 const EMPTY = 0;
 let board, solution, given, notes, history;
 let selRow = 0, selCol = 0;
-let markLevel = 0;  // 0=OFF, 1=4+, 2=3+, 3=전체
+let markLevel = 0;  // 0=OFF, 1=자동4+, 2=자동3+, 3=자동전체, 4=수동
 let modeLine = false, modeColor = false;
 let gameOver = false;
 let activeNumber = 1;  // 현재 활성 숫자 (0 = 끔)
@@ -428,7 +429,7 @@ function isActiveHiddenSingle(r, c) {
 
 // markLevel: 1=4+, 2=3+, 3=전체. 후보 셀 수가 임계값 이상이면 마커 채움
 function refreshAutoNotes() {
-  if (markLevel === 0) return;
+  if (markLevel === 0 || markLevel === 4) return;  // OFF/수동은 notes 건드리지 않음
   const minCands = markLevel === 1 ? 4 : markLevel === 2 ? 3 : 1;
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++) {
@@ -444,7 +445,7 @@ function render() {
   // hover 시 임시 activeNumber 사용 (떼면 원복)
   const savedActive = activeNumber;
   if (hoverNumber > 0) activeNumber = hoverNumber;
-  if (markLevel > 0) refreshAutoNotes();
+  if (markLevel > 0 && markLevel < 4) refreshAutoNotes();
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
   const cellSize = Math.min(52, Math.floor((Math.min(window.innerWidth - 30, window.innerHeight - 240)) / 9));
@@ -619,10 +620,12 @@ function setActiveNumber(n) {
   render();
 }
 
-// numpad 클릭 — set + 입력 (토글 X, 한 번 누르면 적용)
+// numpad 클릭 — 수동 모드면 노트 토글, 아니면 set + 입력
 function numpadClick(n) {
   setActiveNumber(n);
-  if (!given[selRow][selCol]) placeNumber(n);
+  if (given[selRow][selCol]) return;
+  if (markLevel === 4) toggleNote(n);
+  else placeNumber(n);
 }
 
 function selectCell(r, c) {
@@ -630,13 +633,14 @@ function selectCell(r, c) {
   render();
 }
 
-// 수동 노트 토글 (Shift+숫자)
+// 수동 노트 토글 (Shift+숫자 또는 수동 모드에서 numpad/숫자키)
 function toggleNote(n) {
   if (gameOver || given[selRow][selCol] || board[selRow][selCol]) return;
   if (!notes[selRow][selCol]) notes[selRow][selCol] = [];
   const idx = notes[selRow][selCol].indexOf(n);
   if (idx >= 0) notes[selRow][selCol].splice(idx, 1);
   else notes[selRow][selCol].push(n);
+  activeNumber = n;
   render();
 }
 
@@ -740,7 +744,7 @@ let menuOpen = false;
 let menuIdx = 0;
 function getMenuItems(){ return Array.from(document.querySelectorAll('#menu .item:not(.sep)')); }
 function refreshMenu(){
-  document.getElementById('m-mark').textContent = ['OFF','4+','3+','전체'][markLevel];
+  document.getElementById('m-mark').textContent = ['OFF','4+','3+','전체','수동'][markLevel];
   document.getElementById('m-line').textContent = modeLine ? 'ON' : 'OFF';
   document.getElementById('m-color').textContent = modeColor ? 'ON' : 'OFF';
   document.getElementById('m-bw').textContent = document.body.classList.contains('bw') ? 'ON' : 'OFF';
@@ -786,9 +790,9 @@ function setMode(name, btnId, state) {
   render();
 }
 function toggleMark() {
-  markLevel = (markLevel + 1) % 4;
+  markLevel = (markLevel + 1) % 5;
   const btn = document.getElementById('btn-mark');
-  const labels = ['마커 OFF', '마커 4+', '마커 3+', '마커 전체'];
+  const labels = ['마커 OFF', '마커 4+', '마커 3+', '마커 전체', '마커 수동'];
   btn.textContent = labels[markLevel];
   btn.classList.toggle('active', markLevel > 0);
   if (markLevel === 0) {
@@ -849,7 +853,10 @@ document.addEventListener('keydown', e => {
     const n = shiftMap[e.key]; if (n) toggleNote(n);
     return;
   }
-  if (e.key >= '1' && e.key <= '9') placeNumber(parseInt(e.key));
+  if (e.key >= '1' && e.key <= '9') {
+    if (markLevel === 4) toggleNote(parseInt(e.key));
+    else placeNumber(parseInt(e.key));
+  }
   else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') eraseCell();
   else if (e.key === 'ArrowUp') { selRow = Math.max(0, selRow - 1); render(); e.preventDefault(); }
   else if (e.key === 'ArrowDown') { selRow = Math.min(8, selRow + 1); render(); e.preventDefault(); }
