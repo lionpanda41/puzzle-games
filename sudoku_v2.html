@@ -531,47 +531,47 @@ function render() {
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
 
+      // 좌클릭: 빈 셀=즉시 입력 (수동 모드면 노트 토글), 채워진 셀=그 숫자를 활성화
       cell.addEventListener('click', () => {
-        if (lockHover && selRow === r && selCol === c) {
-          lockHover = false;  // 같은 셀 또 클릭 = 고정 해제
-          render();
+        if (gameOver) return;
+        selRow = r; selCol = c;
+        if (given[r][c] || board[r][c]) {
+          setActiveNumber(board[r][c] || given[r][c]);
+        } else if (activeNumber > 0) {
+          if (markLevel === 1) toggleNote(activeNumber);
+          else placeNumber(activeNumber);
         } else {
-          lockHover = true;
-          selectCell(r, c);
+          render();
         }
       });
-      // 모바일 fallback — 동일 토글
+      // 모바일 fallback — 동일 동작
       cell.addEventListener('touchstart', e => {
         e.preventDefault();
-        if (lockHover && selRow === r && selCol === c) {
-          lockHover = false; render();
+        if (gameOver) return;
+        selRow = r; selCol = c;
+        if (given[r][c] || board[r][c]) {
+          setActiveNumber(board[r][c] || given[r][c]);
+        } else if (activeNumber > 0) {
+          if (markLevel === 1) toggleNote(activeNumber);
+          else placeNumber(activeNumber);
         } else {
-          lockHover = true; selectCell(r, c);
+          render();
         }
       }, {passive: false});
-      // PC 호버 — lockHover false일 때만 selected 따라감
+      // PC 호버 — 마우스 위치로 selected 이동
       cell.addEventListener('mouseenter', () => {
         if ('ontouchstart' in window && navigator.maxTouchPoints > 0) return;
-        if (lockHover) return;
         selRow = r; selCol = c;
         if (board[r][c]) hoverNumber = board[r][c];
         render();
       });
       cell.addEventListener('mouseleave', () => {
-        if (lockHover) return;
         if (hoverNumber) { hoverNumber = 0; render(); }
       });
+      // 우클릭: 빈 셀이면 지우기 (노트만 있어도 지움). 채워진/고정 셀은 무시.
       cell.addEventListener('contextmenu', e => {
         e.preventDefault();
         if (gameOver) return;
-        // 잠긴 상태 → 어디 우클릭이든 해제만 (입력값/노트 절대 안 건드림)
-        if (lockHover) {
-          lockHover = false;
-          // selected 위치 유지 (mouseenter 다음 호버 때 자동 갱신)
-          render();
-          return;
-        }
-        // 잠금 해제 상태 → 우클릭 = 지우기
         selRow = r; selCol = c;
         if (!given[r][c]) eraseCell();
       });
