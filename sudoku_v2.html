@@ -581,7 +581,8 @@ function placeNumber(n) {
   history.push({ r: selRow, c: selCol, val: board[selRow][selCol], notes: notes[selRow][selCol].slice() });
   board[selRow][selCol] = n;
   notes[selRow][selCol] = [];
-  activeNumber = n;  // 입력한 숫자로 활성 자동 변경 → 라인 자동 갱신
+  activeNumber = n;  // 입력한 숫자로 활성 자동 변경
+  hoverNumber = 0;   // hover 잔존 무효화 (입력이 우선)
   render();
   checkWin();
 }
