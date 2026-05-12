@@ -515,9 +515,24 @@ function render() {
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
 
-      cell.addEventListener('click', () => { lockHover = true; selectCell(r, c); });
-      // 모바일 fallback
-      cell.addEventListener('touchstart', e => { e.preventDefault(); lockHover = true; selectCell(r, c); }, {passive: false});
+      cell.addEventListener('click', () => {
+        if (lockHover && selRow === r && selCol === c) {
+          lockHover = false;  // 같은 셀 또 클릭 = 고정 해제
+          render();
+        } else {
+          lockHover = true;
+          selectCell(r, c);
+        }
+      });
+      // 모바일 fallback — 동일 토글
+      cell.addEventListener('touchstart', e => {
+        e.preventDefault();
+        if (lockHover && selRow === r && selCol === c) {
+          lockHover = false; render();
+        } else {
+          lockHover = true; selectCell(r, c);
+        }
+      }, {passive: false});
       // PC 호버 — lockHover false일 때만 selected 따라감
       cell.addEventListener('mouseenter', () => {
         if ('ontouchstart' in window && navigator.maxTouchPoints > 0) return;
