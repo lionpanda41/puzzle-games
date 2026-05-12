@@ -18,7 +18,7 @@
   --given:#d8dee9;        /* nord4 */
   --player:#88c0d0;       /* nord8 */
   --error:#bf616a;
-  --note:#4c566a;
+  --note:#a0adba;
   --bg:#2e3440;           /* nord0: 가장 어두운 배경 */
   --cell:#3b4252;         /* nord1: 셀 */
   --grid-3x3:#4c566a;     /* nord3 */
@@ -548,9 +548,10 @@ function render() {
       cell.addEventListener('contextmenu', e => {
         e.preventDefault();
         if (gameOver) return;
-        // 잠긴 상태 → 어디 우클릭이든 해제만 (지우기 X)
+        // 잠긴 상태 → 어디 우클릭이든 해제만 (입력값/노트 절대 안 건드림)
         if (lockHover) {
           lockHover = false;
+          // selected 위치 유지 (mouseenter 다음 호버 때 자동 갱신)
           render();
           return;
         }
@@ -935,7 +936,7 @@ const DEFAULT_COLORS = {
   '--given': '#d8dee9',
   '--player': '#88c0d0',
   '--error': '#bf616a',
-  '--note': '#4c566a',
+  '--note': '#a0adba',
   '--same-num': '#5e81ac',
   '--bg': '#2e3440',
   '--cell': '#3b4252',
