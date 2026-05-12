@@ -203,7 +203,7 @@ body.bw{
   <div><b>마커 수동 모드</b>: 그냥 1~9 또는 패드 클릭 = 노트 토글</div>
   <div>0 / Backspace — 지우기</div>
   <div>L / R — 같은 숫자 셀 사이 점프</div>
-  <div>M — 마커 cycle (OFF → 4+ → 3+ → 전체 → 수동)</div>
+  <div>M — 마커 cycle (OFF → 수동 → 4+ → 3+ → 전체)</div>
   <div>I — 라인 힌트 / C — 색상 / B — 흑백</div>
   <div>H — 정답 1칸 / N — 새 문제 / Ctrl+Z — 되돌리기</div>
 
@@ -256,7 +256,7 @@ body.bw{
 const EMPTY = 0;
 let board, solution, given, notes, history;
 let selRow = 0, selCol = 0;
-let markLevel = 0;  // 0=OFF, 1=자동4+, 2=자동3+, 3=자동전체, 4=수동
+let markLevel = 0;  // 0=OFF, 1=수동, 2=자동4+, 3=자동3+, 4=자동전체
 let modeLine = false, modeColor = false;
 let gameOver = false;
 let activeNumber = 1;  // 현재 활성 숫자 (0 = 끔)
@@ -429,8 +429,8 @@ function isActiveHiddenSingle(r, c) {
 
 // markLevel: 1=4+, 2=3+, 3=전체. 후보 셀 수가 임계값 이상이면 마커 채움
 function refreshAutoNotes() {
-  if (markLevel === 0 || markLevel === 4) return;  // OFF/수동은 notes 건드리지 않음
-  const minCands = markLevel === 1 ? 4 : markLevel === 2 ? 3 : 1;
+  if (markLevel <= 1) return;  // OFF/수동은 notes 건드리지 않음
+  const minCands = markLevel === 2 ? 4 : markLevel === 3 ? 3 : 1;
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++) {
       if (!board[r][c] && !given[r][c]) {
@@ -445,7 +445,7 @@ function render() {
   // hover 시 임시 activeNumber 사용 (떼면 원복)
   const savedActive = activeNumber;
   if (hoverNumber > 0) activeNumber = hoverNumber;
-  if (markLevel > 0 && markLevel < 4) refreshAutoNotes();
+  if (markLevel >= 2) refreshAutoNotes();
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
   const cellSize = Math.min(52, Math.floor((Math.min(window.innerWidth - 30, window.innerHeight - 240)) / 9));
@@ -624,7 +624,7 @@ function setActiveNumber(n) {
 function numpadClick(n) {
   setActiveNumber(n);
   if (given[selRow][selCol]) return;
-  if (markLevel === 4) toggleNote(n);
+  if (markLevel === 1) toggleNote(n);
   else placeNumber(n);
 }
 
@@ -744,7 +744,7 @@ let menuOpen = false;
 let menuIdx = 0;
 function getMenuItems(){ return Array.from(document.querySelectorAll('#menu .item:not(.sep)')); }
 function refreshMenu(){
-  document.getElementById('m-mark').textContent = ['OFF','4+','3+','전체','수동'][markLevel];
+  document.getElementById('m-mark').textContent = ['OFF','수동','4+','3+','전체'][markLevel];
   document.getElementById('m-line').textContent = modeLine ? 'ON' : 'OFF';
   document.getElementById('m-color').textContent = modeColor ? 'ON' : 'OFF';
   document.getElementById('m-bw').textContent = document.body.classList.contains('bw') ? 'ON' : 'OFF';
@@ -792,7 +792,7 @@ function setMode(name, btnId, state) {
 function toggleMark() {
   markLevel = (markLevel + 1) % 5;
   const btn = document.getElementById('btn-mark');
-  const labels = ['마커 OFF', '마커 4+', '마커 3+', '마커 전체', '마커 수동'];
+  const labels = ['마커 OFF', '마커 수동', '마커 4+', '마커 3+', '마커 전체'];
   btn.textContent = labels[markLevel];
   btn.classList.toggle('active', markLevel > 0);
   if (markLevel === 0) {
@@ -854,7 +854,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (e.key >= '1' && e.key <= '9') {
-    if (markLevel === 4) toggleNote(parseInt(e.key));
+    if (markLevel === 1) toggleNote(parseInt(e.key));
     else placeNumber(parseInt(e.key));
   }
   else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') eraseCell();
