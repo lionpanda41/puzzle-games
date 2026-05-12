@@ -512,6 +512,13 @@ function render() {
       }
 
       cell.addEventListener('click', () => selectCell(r, c));
+      // 보드 셀 마우스 오버 — 채워진 숫자 있으면 그 숫자로 라인 미리보기
+      cell.addEventListener('mouseenter', () => {
+        if (board[r][c]) { hoverNumber = board[r][c]; render(); }
+      });
+      cell.addEventListener('mouseleave', () => {
+        if (hoverNumber) { hoverNumber = 0; render(); }
+      });
       cell.addEventListener('contextmenu', e => { e.preventDefault(); if(!gameOver && !given[r][c] && !board[r][c]) eraseCell(); });
       boardEl.appendChild(cell);
     }
@@ -540,8 +547,6 @@ function updateNumpad() {
     remain.textContent = (9 - count);
     btn.appendChild(remain);
     btn.addEventListener('click', () => numpadClick(n));
-    btn.addEventListener('mouseenter', () => { hoverNumber = n; render(); });
-    btn.addEventListener('mouseleave', () => { hoverNumber = 0; render(); });
     numpad.appendChild(btn);
   }
 }
@@ -560,12 +565,8 @@ function setActiveNumber(n) {
   render();
 }
 
-// numpad 클릭 — 같은 숫자 또 누르면 0(끔), 다르면 set + 입력
+// numpad 클릭 — set + 입력 (토글 X, 한 번 누르면 적용)
 function numpadClick(n) {
-  if (activeNumber === n) {
-    setActiveNumber(0);
-    return;
-  }
   setActiveNumber(n);
   if (!given[selRow][selCol]) placeNumber(n);
 }
@@ -580,6 +581,7 @@ function placeNumber(n) {
   history.push({ r: selRow, c: selCol, val: board[selRow][selCol], notes: notes[selRow][selCol].slice() });
   board[selRow][selCol] = n;
   notes[selRow][selCol] = [];
+  activeNumber = n;  // 입력한 숫자로 활성 자동 변경 → 라인 자동 갱신
   render();
   checkWin();
 }
