@@ -548,13 +548,13 @@ function render() {
       cell.addEventListener('contextmenu', e => {
         e.preventDefault();
         if (gameOver) return;
-        // 잠긴 같은 셀에 우클릭 = 해제만 (지우기 X)
-        if (lockHover && selRow === r && selCol === c) {
+        // 잠긴 상태 → 어디 우클릭이든 해제만 (지우기 X)
+        if (lockHover) {
           lockHover = false;
           render();
           return;
         }
-        // 그 외 = 지우기
+        // 잠금 해제 상태 → 우클릭 = 지우기
         selRow = r; selCol = c;
         if (!given[r][c]) eraseCell();
       });
