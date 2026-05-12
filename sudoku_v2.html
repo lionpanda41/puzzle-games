@@ -535,14 +535,20 @@ function render() {
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
 
-      // 좌클릭: 빈 셀=즉시 입력 (수동 모드면 노트 추가만), 채워진 셀=그 숫자를 활성화
+      // 좌클릭:
+      //  - given(고정) 셀: 그 숫자 활성화 (강조만, 덮어쓰기 금지)
+      //  - player 셀에 활성숫자와 같은 값: 그대로 (강조)
+      //  - player 셀에 다른 값: 활성숫자로 덮어쓰기
+      //  - 빈 셀: 활성숫자 입력 (수동 모드면 노트 추가)
       const cellClick = () => {
         if (gameOver) return;
         selRow = r; selCol = c;
-        if (given[r][c] || board[r][c]) {
-          setActiveNumber(board[r][c] || given[r][c]);
+        if (given[r][c]) {
+          setActiveNumber(given[r][c]);
+        } else if (board[r][c] === activeNumber) {
+          render();  // 같은 숫자 — 강조 유지
         } else if (activeNumber > 0) {
-          if (markLevel === 1) addNote(activeNumber);
+          if (markLevel === 1 && !board[r][c]) addNote(activeNumber);
           else placeNumber(activeNumber);
         } else {
           render();
