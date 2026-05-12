@@ -812,6 +812,13 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'n' || e.key === 'N') newGame();
 });
 
+// 마우스 휠 — activeNumber ±1 + 가까운 셀 점프 (LB/RB 동일)
+document.getElementById('board').addEventListener('wheel', e => {
+  if (gameOver) return;
+  e.preventDefault();
+  jumpValue(e.deltaY < 0 ? 1 : -1);
+}, {passive: false});
+
 // Gamepad
 let gpActive = false, gpRow = 0, gpCol = 0, lastBtn = {};
 let gpAxisCooldown = 0;
