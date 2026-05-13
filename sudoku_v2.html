@@ -1128,8 +1128,22 @@ window.addEventListener('mousedown', () => { if (!inputModeLocked) inputMode = '
 window.addEventListener('gamepaddisconnected', () => { gpActive = false; document.getElementById('pad-status').textContent = ''; });
 
 function pollGP() {
-  if (!gpActive) return;
-  const gps = navigator.getGamepads();
+  // gpActive 의존 제거 — 패드가 연결됐는데 gamepadconnected 안 온 경우 대비
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  let anyPad = false;
+  for (const g of gps) if (g) { anyPad = true; break; }
+  if (anyPad && !gpActive) {
+    gpActive = true;
+    if (!inputModeLocked) inputMode = 'gamepad';
+    document.getElementById('pad-status').textContent = '🎮 패드 연결됨';
+  }
+  if (!anyPad) {
+    if (gpActive) {
+      gpActive = false;
+      document.getElementById('pad-status').textContent = '';
+    }
+    return;
+  }
   for (const gp of gps) {
     if (!gp) continue;
     const ax = gp.axes[0], ay = gp.axes[1], th = 0.5;
@@ -1165,8 +1179,11 @@ function pollGP() {
     // LT(6)=다운 / RT(7)=업 — 마우스 휠 효과: 9개 채워진 숫자 건너뜀 + 누르고 있으면 점진 가속
     // 빈 셀에서만 (given/player에 셀 있으면 그래도 활성숫자만 변경)
     // LT/RT — 패드별 다양. buttons[6/7] pressed 또는 value > 0.3
-    var ltDown = !!(gp.buttons[6] && (gp.buttons[6].pressed || gp.buttons[6].value > 0.3));
-    var rtDown = !!(gp.buttons[7] && (gp.buttons[7].pressed || gp.buttons[7].value > 0.3));
+    // LT/RT 후보 다 체크 (패드마다 다름): buttons[6/7] standard, [10/11] 일부 8Bitdo, axes[2~7] 양수
+    function _btn(i){ var b = gp.buttons[i]; return !!(b && (b.pressed || b.value > 0.3)); }
+    function _ax(i){ return gp.axes[i] !== undefined && gp.axes[i] > 0.5; }
+    var ltDown = _btn(6) || _btn(10) || _ax(2) || _ax(3);
+    var rtDown = _btn(7) || _btn(11) || _ax(4) || _ax(5);
     // 패드 입력 디버그 표시 (사용자 패드의 어떤 버튼/축이 활동하는지 확인용)
     var pressedBtns = [];
     for (var bi = 0; bi < gp.buttons.length; bi++) {
