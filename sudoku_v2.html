@@ -1180,18 +1180,25 @@ function pollGP() {
     if (gpAxisCooldown > 0) gpAxisCooldown--;
     // D-pad → 숫자 1-9 (12=up,13=down,14=left,15=right 외에 face/shoulder)
     // 0=A: 정답1칸, 1=B: 지우기, 2=X: 분석토글, 3=Y: 새문제, 4=LB: undo, 5=RB: 정답1칸
+    // 패드 매핑 자동 분기: gp.mapping === 'standard'면 Chromium 표준, 아니면 raw (8BitDo Linux js0)
+    // 표준: A=0/B=1/X=2/Y=3/LB=4/RB=5/LT=6/RT=7/SELECT=8/START=9/L3=10/R3=11
+    // raw js0: A=0/B=1/X=2/Y=3/LB=4/RB=5/SELECT=6/START=7/HOME=8/L3=9/R3=10 (LT/RT는 axes로)
+    const isStd = gp.mapping === 'standard';
+    const SELECT_IDX = isStd ? 8 : 6;
+    const START_IDX  = isStd ? 9 : 7;
+    const L3_IDX     = isStd ? 10 : 9;
+    const R3_IDX     = isStd ? 11 : 10;
     const map = [
-      // 매핑: A=선택 / B=지우기 / X=마커 / Y=되돌리기 / LB=이전숫자 / RB=다음숫자
       [0, () => menuOpen ? menuSelect() : gpAPress(), 'a'],
       [1, () => menuOpen ? closeMenu() : eraseCell(), 'b'],
-      [2, () => { if (!menuOpen) toggleMark(); }, "x"],  // X = 자동 마커 토글
+      [2, () => { if (!menuOpen) toggleMark(); }, "x"],
       [3, () => { if (!menuOpen) undo(); }, 'y'],
       [4, () => { if (!menuOpen) jumpValue(-1); }, 'lb'],
       [5, () => { if (!menuOpen) jumpValue(1); }, 'rb'],
-      [10, () => { if (!menuOpen) toggleManual(); }, 'l3'],
-      [11, () => { if (!menuOpen) jumpToHiddenSingle(); }, 'r3'],
-      [8, () => toggleBW(), 'sel'],
-      [9, () => toggleMenu(), 'start'],
+      [L3_IDX, () => { if (!menuOpen) toggleManual(); }, 'l3'],
+      [R3_IDX, () => { if (!menuOpen) jumpToHiddenSingle(); }, 'r3'],
+      [SELECT_IDX, () => toggleBW(), 'sel'],
+      [START_IDX, () => toggleMenu(), 'start'],
     ];
     // LT(6)=다운 / RT(7)=업 — 마우스 휠 효과: 9개 채워진 숫자 건너뜀 + 누르고 있으면 점진 가속
     // 빈 셀에서만 (given/player에 셀 있으면 그래도 활성숫자만 변경)
@@ -1214,8 +1221,9 @@ function pollGP() {
     }
     // 입력이 있든 없든 항상 표시 (사용자 진단)
     document.getElementById('pad-status').textContent =
-      '🎮 ' + (gp.id ? gp.id.slice(0,30) : 'pad') +
-      ' B[' + pressedBtns.join(',') + '] A[' + activeAxes.join(',') + ']';
+      '🎮 ' + (gp.id ? gp.id.slice(0,24) : 'pad') +
+      ' [' + (gp.mapping || 'raw') + '] ' +
+      'B[' + pressedBtns.join(',') + '] A[' + activeAxes.join(',') + ']';
     if (!window._triggerT) window._triggerT = 0;
     if ((ltDown || rtDown) && !menuOpen) {
       window._triggerT++;
