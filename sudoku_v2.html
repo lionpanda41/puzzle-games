@@ -27,14 +27,14 @@
   --same-num:#5e81ac;     /* nord10 */
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;user-select:none;overflow:hidden}
+body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;user-select:none;overflow-x:hidden;overflow-y:auto;padding:4px;box-sizing:border-box}
 #top{display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;justify-content:center}
 #top button{background:#1e293b;color:#94a3b8;padding:5px 12px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
 #top button:hover{background:#334155;color:#e2e8f0}
 #top button.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
 #info{font-size:13px;color:#cbd5e1;min-width:50px;font-weight:bold}
 #timer{font-size:13px;color:#e2e8f0;font-weight:bold}
-#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:var(--grid-1);gap:1px;border:5px solid #fbbf24;border-radius:2px;width:min(540px,95vw);aspect-ratio:1/1}
+#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:var(--grid-1);gap:1px;border:5px solid #fbbf24;border-radius:2px;width:min(540px,calc(100vw - 16px));aspect-ratio:1/1;box-sizing:border-box}
 @media (max-width:768px){
   .cell{font-size:16px !important}
   #top button,#actions button{padding:7px 10px;font-size:11px;min-height:36px}
@@ -1179,11 +1179,14 @@ function pollGP() {
     // LT(6)=다운 / RT(7)=업 — 마우스 휠 효과: 9개 채워진 숫자 건너뜀 + 누르고 있으면 점진 가속
     // 빈 셀에서만 (given/player에 셀 있으면 그래도 활성숫자만 변경)
     // LT/RT — 패드별 다양. buttons[6/7] pressed 또는 value > 0.3
-    // LT/RT 후보 다 체크 (패드마다 다름): buttons[6/7] standard, [10/11] 일부 8Bitdo, axes[2~7] 양수
+    // LT/RT — 패드마다 다양. 일부 패드는 한 axis(2 또는 3)에 LT=음수, RT=양수로 보고
     function _btn(i){ var b = gp.buttons[i]; return !!(b && (b.pressed || b.value > 0.3)); }
-    function _ax(i){ return gp.axes[i] !== undefined && gp.axes[i] > 0.5; }
-    var ltDown = _btn(6) || _btn(10) || _ax(2) || _ax(3);
-    var rtDown = _btn(7) || _btn(11) || _ax(4) || _ax(5);
+    function _axP(i){ return gp.axes[i] !== undefined && gp.axes[i] > 0.5; }
+    function _axN(i){ return gp.axes[i] !== undefined && gp.axes[i] < -0.5; }
+    // LT: button6/10 또는 axes 음수(같은 축에 LT/RT 분기) 또는 axes[3] 양수(별도 axis)
+    var ltDown = _btn(6) || _btn(10) || _axN(2) || _axN(4) || _axP(3);
+    // RT: button7/11 또는 axes 양수
+    var rtDown = _btn(7) || _btn(11) || _axP(2) || _axP(4) || _axP(5);
     // 패드 입력 디버그 표시 (사용자 패드의 어떤 버튼/축이 활동하는지 확인용)
     var pressedBtns = [];
     for (var bi = 0; bi < gp.buttons.length; bi++) {
