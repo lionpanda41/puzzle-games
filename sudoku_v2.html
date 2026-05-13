@@ -558,15 +558,21 @@ function render() {
       if (modeLine && activeNumber > 0 && val === activeNumber) {
         cell.classList.add('active-num');
       }
-      // 색상 모드: 후보 수 색상 + activeNumber 기준 정답이면 파랑 우선. activeNumber=0이면 후보수만
+      // 색상 모드:
+      //  diff-answer (한눈에 보이는 정답) = row/col/box 마지막 빈 칸 + activeNumber 정답
+      //  diff-easy (유력 — 카운트하면 확정) = naked single, hidden single 등
+      //  나머지는 후보 수 기반
       if (modeColor && !val && !given[r][c]) {
         const len = getCandidates(r, c).length;
         let cls;
-        if (len === 1) cls = 'diff-answer';
-        else if (len === 2) cls = 'diff-easy';
+        if (len === 2) cls = 'diff-easy';
         else if (len === 3) cls = 'diff-mid';
+        else if (len === 1) cls = 'diff-easy';  // naked single = 유력
         else cls = 'diff-hard';
-        if (activeNumber > 0 && canPlaceActive(r, c) && isActiveHiddenSingle(r, c)) cls = 'diff-answer';
+        // activeNumber 기준 hidden single이면 유력으로 (이전 정답이었음)
+        if (activeNumber > 0 && canPlaceActive(r, c) && isActiveHiddenSingle(r, c)) cls = 'diff-easy';
+        // 진짜 정답 (한눈에 보이는 마지막 빈 칸) — diff-answer 우선
+        if (isLastEmptyInUnit(r, c) && activeNumber > 0 && canPlaceActive(r, c)) cls = 'diff-answer';
         cell.classList.add(cls);
       }
 
