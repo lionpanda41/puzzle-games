@@ -634,15 +634,16 @@ function render() {
           render();  // 선택만
         }
       };
-      cell.addEventListener('click', () => {
-        if (inputMode === 'touch') touchCellTap();
-        else cellClick();
+      // pointerup — mouse/touch 통합 (PointerEvent로 디바이스 구분)
+      cell.addEventListener('pointerup', e => {
+        if (e.pointerType === 'touch') {
+          if (!inputModeLocked) inputMode = 'touch';
+          touchCellTap();
+        } else if (e.button === 0 || e.button === undefined) {
+          if (inputMode === 'touch') touchCellTap();
+          else cellClick();
+        }
       });
-      cell.addEventListener('touchstart', e => {
-        e.preventDefault();
-        if (!inputModeLocked) inputMode = 'touch';
-        touchCellTap();
-      }, {passive: false});
       // PC 호버 — 셀 이동 + 그 셀에 숫자 있으면 activeNumber 자동 동기화 (라인이 따라옴)
       cell.addEventListener('mouseenter', () => {
         if (inputMode !== 'mouse') return;
