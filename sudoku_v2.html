@@ -156,7 +156,9 @@ body.bw{
   <span id="info"></span>
   <span id="timer">00:00</span>
   <span id="best" style="font-size:12px;color:#94a3b8"></span>
+  <span id="active-badge" style="font-size:14px;color:#fbbf24;background:#1e293b;border:1px solid #475569;padding:3px 10px;border-radius:6px;font-weight:bold">▶ 입력: <span id="active-num">1</span></span>
 </div>
+<div id="toast" style="position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(30,41,59,0.95);border:1px solid #3b82f6;color:#e2e8f0;padding:10px 16px;border-radius:8px;z-index:50;font-size:12px;line-height:1.5;display:none;max-width:90vw"></div>
 <div id="board"></div>
 <div id="numpad"></div>
 <div id="actions">
@@ -218,6 +220,12 @@ body.bw{
   <div>좌클릭 — 선택 + 잠금 토글</div>
   <div>우클릭 — 잠금 풀기 / 빈 셀이면 지우기</div>
   <div>휠 — 활성숫자 ±1 (9개 다 채워진 숫자는 건너뜀)</div>
+
+  <div style="margin-top:10px"><b>📱 모바일/터치</b></div>
+  <div>빈 셀 탭 — 활성숫자 입력</div>
+  <div>숫자패드 탭 — 활성숫자 변경 (다시 탭하면 입력)</div>
+  <div>아래 <b>지우기</b> 버튼 — 선택 셀 비우기</div>
+  <div>아래 <b>마커 OFF/ON</b> — 메모 모드 토글</div>
 
   <div style="margin-top:10px"><b>🎮 게임패드</b></div>
   <div>방향 — 셀 이동 / A — 입력 / B — 지우기</div>
@@ -612,7 +620,18 @@ function updateInfo() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       if (board[r][c]) filled++;
-  document.getElementById('info').textContent = filled + '/81 · 활성:' + activeNumber;
+  document.getElementById('info').textContent = filled + '/81';
+  const an = document.getElementById('active-num');
+  if (an) an.textContent = activeNumber || '-';
+}
+
+function showToast(msg, ms) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.innerHTML = msg;
+  el.style.display = 'block';
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => { el.style.display = 'none'; }, ms || 4000);
 }
 
 function setActiveNumber(n) {
@@ -812,7 +831,20 @@ function toggleMark() {
   render();
 }
 function toggleLine()  { setMode('line',  'btn-line',  !modeLine); }
-function toggleColor() { setMode('color', 'btn-color', !modeColor); }
+function toggleColor() {
+  setMode('color', 'btn-color', !modeColor);
+  if (modeColor && !localStorage.getItem('sudoku-color-tip-seen')) {
+    showToast(
+      '💡 <b>색상 힌트</b><br>' +
+      '<span style="color:#a5adb8">옅은회색</span>=정답(1후보) · ' +
+      '<span style="color:#86c267">초록</span>=유력(2) · ' +
+      '<span style="color:#6b7689">진회</span>=가능(3) · ' +
+      '<span style="color:#bf616a">빨강</span>=어려움(4+)',
+      6000
+    );
+    localStorage.setItem('sudoku-color-tip-seen', '1');
+  }
+}
 
 function fmtTime(s) {
   return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
@@ -1096,6 +1128,16 @@ document.getElementById('btn-erase').addEventListener('click', eraseCell);
 document.getElementById('btn-new').addEventListener('click', () => newGame());
 
 newGame();
+
+// 첫 진입 안내 (한 번만)
+if (!localStorage.getItem('sudoku-intro-seen')) {
+  const isTouch = ('ontouchstart' in window) && navigator.maxTouchPoints > 0;
+  const msg = isTouch
+    ? '👆 빈 셀을 탭하면 위의 <b>입력 숫자</b>가 들어갑니다.<br>아래 숫자패드로 입력 숫자 변경 · <b>?</b> 버튼으로 전체 도움말'
+    : '🖱️ 셀에 마우스 올리면 미리보기 · 클릭=고정 · <b>휠</b>=입력 숫자 변경<br><b>C</b>=색상 힌트 · <b>?</b>=전체 도움말';
+  setTimeout(() => showToast(msg, 7000), 600);
+  localStorage.setItem('sudoku-intro-seen', '1');
+}
 </script>
 </body>
 </html>
