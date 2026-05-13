@@ -228,10 +228,11 @@ body.bw{
   <div>휠 — 활성숫자 ±1 (9개 다 채워진 숫자는 건너뜀)</div>
 
   <div style="margin-top:10px"><b>📱 모바일/터치</b></div>
-  <div>빈 셀 탭 — 활성숫자 입력</div>
-  <div>숫자패드 탭 — 활성숫자 변경 (다시 탭하면 입력)</div>
-  <div>아래 <b>지우기</b> 버튼 — 선택 셀 비우기</div>
-  <div>아래 <b>마커 OFF/ON</b> — 메모 모드 토글</div>
+  <div>셀 탭 — <b>선택만</b>(라인/색상 미리보기). 즉시 입력 X</div>
+  <div>given 셀 탭 — 그 숫자 활성화 (같은 숫자 셀 라인 표시)</div>
+  <div>숫자패드 1~9 탭 — 활성숫자 변경 + 빈 셀이면 입력</div>
+  <div>같은 셀 다시 탭 — 입력값 지움 (토글)</div>
+  <div>아래 <b>지우기</b> / <b>마커 OFF/ON</b> 버튼</div>
 
   <div style="margin-top:10px"><b>🎮 게임패드</b></div>
   <div>방향 — 셀 이동 / A — 입력 / B — 지우기</div>
@@ -282,6 +283,8 @@ let modeLine = false, modeColor = false;
 let gameOver = false;
 let activeNumber = 1;  // 현재 활성 숫자 (0 = 끔)
 let lockHover = false;  // 좌클릭 시 true → 호버 selected 따라옴 차단
+// 입력 모드: 'mouse' | 'touch' | 'gamepad'. 마지막 이벤트로 자동 전환.
+let inputMode = ('ontouchstart' in window && navigator.maxTouchPoints > 0) ? 'touch' : 'mouse';
 let difficulty = 36;
 let timerInterval, seconds = 0;
 
@@ -554,7 +557,7 @@ function render() {
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
 
-      // 좌클릭: selected 그 셀에 고정(lockHover) + 입력
+      // 마우스/패드 모드 클릭 — 즉시 입력
       //  - given: 그 숫자 활성화만 (덮어쓰기 금지)
       //  - player 셀에 활성숫자와 같은 값: 그대로 (강조 유지)
       //  - player 셀에 다른 값: 활성숫자로 덮어쓰기
@@ -562,9 +565,9 @@ function render() {
       const cellClick = () => {
         if (gameOver) return;
         selRow = r; selCol = c;
-        lockHover = true;  // 클릭 시점에 호버 모드 잠금
+        lockHover = true;
         if (given[r][c]) {
-          setActiveNumber(given[r][c]);
+          setActiveNumber(board[r][c]);
         } else if (board[r][c] === activeNumber) {
           render();
         } else if (activeNumber > 0) {
@@ -574,11 +577,36 @@ function render() {
           render();
         }
       };
-      cell.addEventListener('click', cellClick);
-      cell.addEventListener('touchstart', e => { e.preventDefault(); cellClick(); }, {passive: false});
-      // PC 호버 — lockHover false 일 때만 selected 따라감
+      // 터치 모드 셀 탭 — 선택만(미리보기). 입력은 numpad 탭으로.
+      //  - given: setActiveNumber (그 숫자 활성화 + 같은 숫자 셀 라인 표시)
+      //  - 같은 셀 재탭: 토글 — 빈 셀이면 그대로 / 입력된 셀이면 지움
+      //  - 그 외: 선택만 (selRow/selCol 변경) → 라인/색상 ON이면 그 셀 기준 표시
+      const touchCellTap = () => {
+        if (gameOver) return;
+        const sameTap = (selRow === r && selCol === c);
+        selRow = r; selCol = c;
+        lockHover = true;
+        if (given[r][c]) {
+          setActiveNumber(board[r][c]);
+        } else if (sameTap && board[r][c]) {
+          // 입력된 셀 재탭 → 지움 (사용자 의도: 토글)
+          eraseCell();
+        } else {
+          render();  // 선택만
+        }
+      };
+      cell.addEventListener('click', () => {
+        if (inputMode === 'touch') touchCellTap();
+        else cellClick();
+      });
+      cell.addEventListener('touchstart', e => {
+        e.preventDefault();
+        inputMode = 'touch';
+        touchCellTap();
+      }, {passive: false});
+      // PC 호버 — mouse 모드일 때만, lockHover false일 때만
       cell.addEventListener('mouseenter', () => {
-        if ('ontouchstart' in window && navigator.maxTouchPoints > 0) return;
+        if (inputMode !== 'mouse') return;
         if (lockHover) return;
         selRow = r; selCol = c;
         render();
@@ -967,7 +995,10 @@ document.addEventListener('wheel', e => {
 // Gamepad
 let gpActive = false, gpRow = 0, gpCol = 0, lastBtn = {};
 let gpAxisCooldown = 0;
-window.addEventListener('gamepadconnected', () => { gpActive = true; document.getElementById('pad-status').textContent = '🎮 패드 연결됨'; });
+window.addEventListener('gamepadconnected', () => { gpActive = true; inputMode = 'gamepad'; document.getElementById('pad-status').textContent = '🎮 패드 연결됨'; });
+// 마우스 활동 감지 → mouse 모드
+window.addEventListener('mousemove', () => { if (inputMode !== 'gamepad') inputMode = 'mouse'; }, {passive:true, once:false});
+window.addEventListener('mousedown', () => { inputMode = 'mouse'; }, {passive:true});
 window.addEventListener('gamepaddisconnected', () => { gpActive = false; document.getElementById('pad-status').textContent = ''; });
 
 function pollGP() {
@@ -1139,8 +1170,8 @@ newGame();
 if (!localStorage.getItem('sudoku-intro-seen')) {
   const isTouch = ('ontouchstart' in window) && navigator.maxTouchPoints > 0;
   const msg = isTouch
-    ? '👆 빈 셀을 탭하면 위의 <b>입력 숫자</b>가 들어갑니다.<br>아래 숫자패드로 입력 숫자 변경 · <b>?</b> 버튼으로 전체 도움말'
-    : '🖱️ 셀에 마우스 올리면 미리보기 · 클릭=고정 · <b>휠</b>=입력 숫자 변경<br><b>C</b>=색상 힌트 · <b>?</b>=전체 도움말';
+    ? '👆 <b>터치 모드</b>: 셀 탭 = 선택만(미리보기) · 아래 <b>숫자패드</b> 탭 = 입력<br>같은 셀 다시 탭 = 지우기 · <b>?</b> 전체 도움말'
+    : '🖱️ <b>마우스 모드</b>: 호버 미리보기 · 클릭 = 입력 · <b>휠</b> = 숫자 변경<br><b>C</b> = 색상 / <b>?</b> = 전체 도움말';
   setTimeout(() => showToast(msg, 7000), 600);
   localStorage.setItem('sudoku-intro-seen', '1');
 }
