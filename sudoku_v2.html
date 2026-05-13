@@ -503,7 +503,8 @@ function isActiveHiddenSingle(r, c) {
 // markLevel: 1=4+, 2=3+, 3=전체. 후보 셀 수가 임계값 이상이면 마커 채움
 function refreshAutoNotes() {
   if (markLevel <= 1) return;  // OFF/수동 모드는 autoNotes도 안 채움
-  const minCands = markLevel === 2 ? 4 : markLevel === 3 ? 3 : 1;
+  // 자동마커 단계: 2=4+, 3=3+, 4=2+ (전체 1+ 제거 — 정답 공개 방지)
+  const minCands = markLevel === 2 ? 4 : markLevel === 3 ? 3 : 2;
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++) {
       if (!board[r][c] && !given[r][c]) {
@@ -892,7 +893,7 @@ let menuOpen = false;
 let menuIdx = 0;
 function getMenuItems(){ return Array.from(document.querySelectorAll('#menu .item:not(.sep)')); }
 function refreshMenu(){
-  document.getElementById('m-mark').textContent = ['OFF','수동','4+','3+','전체'][markLevel];
+  document.getElementById('m-mark').textContent = ['OFF','수동','4+','3+','2+'][markLevel];
   document.getElementById('m-line').textContent = modeLine ? 'ON' : 'OFF';
   document.getElementById('m-color').textContent = modeColor ? 'ON' : 'OFF';
   document.getElementById('m-bw').textContent = document.body.classList.contains('bw') ? 'ON' : 'OFF';
@@ -961,7 +962,7 @@ function toggleMark() {
   else if (markLevel === 4) markLevel = 0;
   else markLevel = 2;  // 1(수동)에서 자동 누르면 2로 (수동 끄고 자동 시작)
   const btn = document.getElementById('btn-mark');
-  const labels = {0:'자동마커 OFF', 2:'자동마커 4+', 3:'자동마커 3+', 4:'자동마커 전체'};
+  const labels = {0:'자동마커 OFF', 2:'자동마커 4+', 3:'자동마커 3+', 4:'자동마커 2+'};
   btn.textContent = labels[markLevel] || '자동마커 OFF';
   btn.classList.toggle('active', markLevel >= 2);
   if (markLevel < 2) {
@@ -1160,7 +1161,7 @@ function pollGP() {
         selRow = gpRow; selCol = gpCol;
         render();
       }
-      gpAxisCooldown = 4; // ~200ms
+      gpAxisCooldown = 2; // ~100ms (이전 200ms 너무 느림)
     }
     if (gpAxisCooldown > 0) gpAxisCooldown--;
     // D-pad → 숫자 1-9 (12=up,13=down,14=left,15=right 외에 face/shoulder)
