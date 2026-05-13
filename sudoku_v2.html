@@ -44,17 +44,24 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
   background-color:var(--cell);
   display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;font-weight:bold;transition:background-color .1s;position:relative;overflow:hidden
 }
-/* given = 고정 숫자 — 돌 느낌 (어두운 배경 + serif + 그림자) */
+/* given = 고정 숫자 — 돌 느낌 (어두운 배경 + 큰 serif + 그림자) */
 .cell.given{
-  color:#e2e8f0 !important;
-  background:linear-gradient(135deg, #2d3340 0%, #1e2330 60%, #161a24 100%) !important;
+  color:#c8d2dc !important;
+  background:linear-gradient(135deg, #4a4138 0%, #2d2620 50%, #1a1612 100%) !important;
   font-family:'Georgia','Times New Roman',serif !important;
   font-weight:900 !important;
-  text-shadow:0 1px 2px rgba(0,0,0,0.8), 0 -1px 0 rgba(255,255,255,0.15);
-  box-shadow:inset 0 -2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)
+  font-style:italic !important;
+  letter-spacing:-1px;
+  text-shadow:0 2px 3px rgba(0,0,0,0.9), 0 -1px 0 rgba(255,255,255,0.2), 1px 0 0 rgba(0,0,0,0.5);
+  box-shadow:inset 0 -3px 6px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.12), inset 0 0 8px rgba(80,60,40,0.4)
 }
-/* player = 사용자 입력 — 깔끔한 sans + 청록 */
-.cell.player{color:var(--player);font-family:'Arial Black','Helvetica',sans-serif;font-weight:bold}
+/* player = 사용자 입력 — 깔끔한 sans + 밝은 청록 */
+.cell.player{
+  color:#7ed8ee !important;
+  font-family:'Courier New','Monaco',monospace !important;
+  font-weight:bold;
+  text-shadow:0 0 6px rgba(126,216,238,0.4)
+}
 .cell.error{color:var(--error) !important}
 .cell.selected{outline:4px solid var(--selected);outline-offset:-4px;z-index:4;animation:blink-sel 0.9s ease-in-out infinite}
 @keyframes blink-sel{0%,100%{outline-color:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.35)}50%{outline-color:#fff7d6;box-shadow:0 0 16px rgba(251,191,36,0.8)}}
@@ -611,11 +618,17 @@ function render() {
         inputMode = 'touch';
         touchCellTap();
       }, {passive: false});
-      // PC 호버 — mouse 모드면 항상 따라감 (lockHover 제거됨)
+      // PC 호버 — 셀 이동 + 그 셀에 숫자 있으면 activeNumber 자동 동기화 (라인이 따라옴)
       cell.addEventListener('mouseenter', () => {
         if (inputMode !== 'mouse') return;
         selRow = r; selCol = c;
-        render();
+        var v = board[r][c];
+        if (v && v !== activeNumber) {
+          activeNumber = v;
+          render();
+        } else {
+          render();
+        }
       });
       // 우클릭 — 빈/player 셀 지우기 (given은 무시)
       cell.addEventListener('contextmenu', e => {
