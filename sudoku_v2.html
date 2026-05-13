@@ -32,8 +32,8 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 #top button{background:#1e293b;color:#94a3b8;padding:5px 12px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
 #top button:hover{background:#334155;color:#e2e8f0}
 #top button.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
-#info{font-size:12px;color:#475569;min-width:60px}
-#timer{font-size:12px;color:#64748b}
+#info{font-size:13px;color:#cbd5e1;min-width:50px;font-weight:bold}
+#timer{font-size:13px;color:#e2e8f0;font-weight:bold}
 #board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:var(--grid-1);gap:1px;border:3px solid var(--board-border);border-radius:2px;width:min(540px,95vw);aspect-ratio:1/1}
 @media (max-width:768px){
   .cell{font-size:16px !important}
@@ -99,7 +99,7 @@ body.bw{
 .numpad-btn:hover{background:#334155}
 .numpad-btn.done{opacity:0.3}
 .numpad-btn.active{background:#1d4ed8;color:#fff;border-color:#3b82f6}
-.numpad-btn .count{position:absolute;bottom:1px;right:3px;font-size:9px;color:#64748b}
+.numpad-btn .count{position:absolute;bottom:1px;right:3px;font-size:11px;color:#94a3b8;font-weight:bold}
 #pad-status{position:fixed;bottom:8px;right:12px;font-size:10px;color:#1e293b}
 #dev{position:fixed;top:50%;right:20px;transform:translateY(-50%);background:rgba(15,23,42,0.97);padding:14px 18px;border-radius:8px;border:2px solid #fbbf24;font-size:12px;color:#cbd5e1;z-index:25;min-width:240px;max-height:90vh;overflow-y:auto}
 #dev.hidden{display:none}
@@ -133,10 +133,17 @@ body.bw{
 #menu .item.sep{height:1px;background:#334155;margin:6px 0;padding:0}
 #menu .item .v{color:#fbbf24;font-size:11px}
 #menu .hint{margin-top:10px;color:#475569;font-size:10px;text-align:center}
-#actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center}
+#actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center;align-items:center}
 #actions button{background:#1e293b;color:#94a3b8;padding:6px 14px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
 #actions button:hover{background:#334155;color:#e2e8f0}
 #actions button.active{background:#fbbf24;color:#111827;border-color:#fbbf24}
+#actions .toggle-btn{background:#0f1e2e;border-color:#1e3a52}
+#actions .action-btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
+#actions .action-btn.primary{background:#1d4ed8;color:#fff;border-color:#3b82f6}
+#actions .action-btn.primary:hover{background:#2563eb}
+#actions .dev-btn{opacity:0.4}
+#actions .dev-btn:hover{opacity:1}
+#actions .btn-sep{width:1px;height:24px;background:#475569;margin:0 4px}
 .note-grid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:100%;height:100%;pointer-events:none;position:relative;z-index:2}
 .note-grid span{display:flex;align-items:center;justify-content:center;color:var(--note);font-weight:normal;text-shadow:0 0 2px #000,0 0 2px #000}
 /* 셀 배경에 따라 마커 글자 색 대비 강화 */
@@ -162,15 +169,16 @@ body.bw{
 <div id="board"></div>
 <div id="numpad"></div>
 <div id="actions">
-  <button id="btn-mark">마커 OFF</button>
-  <button id="btn-line">라인 OFF</button>
-  <button id="btn-color">색상 OFF</button>
-  <button id="btn-bw">흑백 OFF</button>
-  <button id="btn-erase">지우기</button>
-  <button id="btn-reset">초기화</button>
-  <button id="btn-new">새문제</button>
-  <button id="btn-help">?</button>
-  <button id="btn-dev">🎨</button>
+  <button id="btn-mark" class="toggle-btn">마커 OFF</button>
+  <button id="btn-line" class="toggle-btn">라인 OFF</button>
+  <button id="btn-color" class="toggle-btn">색상 OFF</button>
+  <button id="btn-bw" class="toggle-btn">흑백 OFF</button>
+  <span class="btn-sep" aria-hidden="true"></span>
+  <button id="btn-erase" class="action-btn">지우기</button>
+  <button id="btn-reset" class="action-btn">초기화</button>
+  <button id="btn-new" class="action-btn primary">새문제</button>
+  <button id="btn-help" class="action-btn">?</button>
+  <button id="btn-dev" class="action-btn dev-btn" title="개발자 모드">🎨</button>
 </div>
 <div id="dev" class="hidden">
   <div class="title">🎨 개발자 모드 — 색상</div>
@@ -468,8 +476,8 @@ function render() {
       cell.style.width = cellSize + 'px';
       cell.style.height = cellSize + 'px';
       cell.style.fontSize = (cellSize * 0.55) + 'px';
-      if (c % 3 === 0 && c > 0) cell.style.borderLeft = '4px solid var(--grid-3x3)';
-      if (r % 3 === 0 && r > 0) cell.style.borderTop = '4px solid var(--grid-3x3)';
+      if (c % 3 === 0 && c > 0) cell.style.borderLeft = '3px solid #88c0d0';
+      if (r % 3 === 0 && r > 0) cell.style.borderTop = '3px solid #88c0d0';
       const val = board[r][c];
 
       // 라인 모드: 행/열 막힘 = 라인, 박스만 막힘 = X. activeNumber=0이면 OFF
