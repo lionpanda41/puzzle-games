@@ -967,13 +967,20 @@ const PAD_ACTIONS = [
 ];
 let padmapCustom = {};
 try { padmapCustom = JSON.parse(localStorage.getItem('sudoku-padmap') || '{}'); } catch(e){}
+// 옛 형식 정리 (number 또는 invalid object → 제거)
+for (const k of Object.keys(padmapCustom)) {
+  const v = padmapCustom[k];
+  if (!v || typeof v !== 'object' || !v.type) delete padmapCustom[k];
+}
+localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
 let _learningId = null;
 let _learnPrevBtns = null;
 let _learnPrevAxes = null;
 
-// padmapCustom 형식: {id: {type:'btn'|'axis', idx:N, dir:'pos'|'neg'}}
+// padmapCustom 형식: {id: {type:'btn'|'axis', idx:N, dir?}}. 옛 형식(number/잘못된 object)은 무시
 function getPadBinding(actionId, isStd) {
-  if (padmapCustom[actionId]) return padmapCustom[actionId];
+  const cur = padmapCustom[actionId];
+  if (cur && typeof cur === 'object' && cur.type) return cur;  // 유효한 새 형식만
   const a = PAD_ACTIONS.find(x => x.id === actionId);
   if (!a) return null;
   if (a.type === 'btn') return {type:'btn', idx: isStd ? a.stdIdx : a.rawIdx};
