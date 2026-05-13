@@ -66,10 +66,14 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 .cell.selected{outline:5px solid #fff7d6;outline-offset:-5px;z-index:10;animation:blink-sel 0.7s ease-in-out infinite;box-shadow:0 0 24px rgba(255,247,214,0.9), inset 0 0 0 1px #fbbf24}
 @keyframes blink-sel{0%,100%{outline-color:#fff7d6;box-shadow:0 0 20px rgba(255,247,214,0.85), inset 0 0 0 1px #fbbf24}50%{outline-color:#fbbf24;box-shadow:0 0 32px rgba(251,191,36,1.0), inset 0 0 0 1px #fff}}
 .cell.highlight{box-shadow:inset 0 0 100px rgba(251,191,36,0.15)}
-/* 행/열 크로스 — 보라 옅게 (선택 셀 묻히지 않게). 교차 셀도 너무 진하지 않게 */
-.cell.in-sel-row{box-shadow:inset 0 0 100px rgba(167,139,250,0.18),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight)}
-.cell.in-sel-col{box-shadow:inset 0 0 100px rgba(167,139,250,0.18),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
-.cell.in-sel-row.in-sel-col{box-shadow:inset 0 0 100px rgba(167,139,250,0.30),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
+/* 행/열 크로스 — 보라 overlay 레이어 (셀 전체 물들임, 자식 div로 자연 가산) */
+.cell .row-overlay,.cell .col-overlay{position:absolute;inset:0;pointer-events:none;background:rgba(167,139,250,0.32);z-index:1}
+/* 행/열 경계 thin highlight (한 줄짜리 화살표) */
+.cell.in-sel-row{box-shadow:inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight)}
+.cell.in-sel-col{box-shadow:inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
+.cell.in-sel-row.in-sel-col{box-shadow:inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
+/* 셀 안 글자 z-index 위로 보장 */
+.cell{z-index:0}
 .cell.same-num{background:var(--same-num) !important;color:#fff !important;box-shadow:inset 0 0 0 2px var(--selected)}
 /* 난이도 색상 — CSS 변수 (개발자 모드로 변경 가능) */
 .cell.diff-answer{background-color:var(--diff-answer);color:#0f172a !important;animation:blink-answer 1.1s ease-in-out infinite}
@@ -571,9 +575,19 @@ function render() {
 
       if (r === selRow && c === selCol) cell.classList.add('selected');
       else if (!gameOver) {
-        // 행/열 외곽 박스만 (3×3 박스 제거)
-        if (r === selRow) cell.classList.add('in-sel-row');
-        if (c === selCol) cell.classList.add('in-sel-col');
+        // 행/열 보라 overlay 레이어 (자연 가산)
+        if (r === selRow) {
+          cell.classList.add('in-sel-row');
+          const lay = document.createElement('div');
+          lay.className = 'row-overlay';
+          cell.appendChild(lay);
+        }
+        if (c === selCol) {
+          cell.classList.add('in-sel-col');
+          const lay = document.createElement('div');
+          lay.className = 'col-overlay';
+          cell.appendChild(lay);
+        }
         // 같은 숫자 강조
         if (selVal && val === selVal) cell.classList.add('same-num');
       }
