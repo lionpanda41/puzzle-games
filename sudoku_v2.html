@@ -76,8 +76,10 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 .cell{z-index:0}
 .cell.same-num{background:var(--same-num) !important;color:#fff !important;box-shadow:inset 0 0 0 2px var(--selected)}
 /* 난이도 색상 — CSS 변수 (개발자 모드로 변경 가능) */
-.cell.diff-answer{background-color:var(--diff-answer);color:#0f172a !important;z-index:5;outline:3px dashed #fff;outline-offset:-3px;animation:blink-answer 0.9s ease-in-out infinite}
-@keyframes blink-answer{0%,100%{outline-color:#fff;box-shadow:inset 0 0 18px rgba(126,165,100,0.7)}50%{outline-color:#7ea564;box-shadow:inset 0 0 32px rgba(126,165,100,1.0)}}
+.cell.diff-answer{background-color:var(--diff-answer)!important;color:#0f172a !important;z-index:5;animation:blink-answer 1.1s ease-in-out infinite}
+@keyframes blink-answer{0%,100%{background-color:var(--diff-answer)}50%{background-color:var(--diff-easy)}}
+/* 정답 셀의 row/col overlay 무효화 — 보라가 가리지 않게 */
+.cell.diff-answer .row-overlay,.cell.diff-answer .col-overlay{display:none!important}
 .cell.diff-easy{background-color:var(--diff-easy)}
 .cell.diff-mid{background-color:var(--diff-mid)}
 .cell.diff-hard{background-color:var(--diff-hard)}
