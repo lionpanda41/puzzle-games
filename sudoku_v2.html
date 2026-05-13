@@ -300,8 +300,24 @@ body.bw{
   <div class="item" data-act="fill"><span>정답 1칸</span></div>
   <div class="item" data-act="undo"><span>되돌리기</span></div>
   <div class="item" data-act="reset"><span>초기화 (입력 다 비움)</span></div>
+  <div class="item" data-act="padmap"><span>🎮 패드 매핑 보기</span></div>
   <div class="item" data-act="close"><span>닫기</span></div>
   <div class="hint">스틱↑↓ · A 선택 · B/START 닫기</div>
+</div>
+<!-- 패드 매핑 모달 -->
+<div id="padmap-modal" class="hidden" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #fbbf24;border-radius:10px;padding:18px 24px;z-index:30;font-size:12px;color:#cbd5e1;line-height:1.7;min-width:280px">
+  <div style="color:#fbbf24;font-weight:bold;text-align:center;margin-bottom:10px;font-size:13px">🎮 패드 매핑</div>
+  <div><b>A</b> — 선택 / 입력</div>
+  <div><b>B</b> — 취소 / 지우기</div>
+  <div><b>X</b> — (비움)</div>
+  <div><b>Y</b> — 되돌리기 (undo)</div>
+  <div><b>LB</b> — 이전 숫자로 이동</div>
+  <div><b>RB</b> — 다음 숫자로 이동</div>
+  <div><b>LT</b> — 활성숫자 ↓ (빈 칸 휠 효과)</div>
+  <div><b>RT</b> — 활성숫자 ↑ (빈 칸 휠 효과, 누르면 가속)</div>
+  <div><b>방향키/스틱</b> — 셀 이동 또는 메뉴 항목</div>
+  <div><b>SELECT</b> — 흑백 토글 / <b>START</b> — 메뉴</div>
+  <div style="margin-top:10px;font-size:10px;opacity:0.6">화면 클릭/ESC = 닫기</div>
 </div>
 <div id="pad-status"></div>
 
@@ -903,8 +919,16 @@ function menuSelect(){
   else if (act === 'fill') fillOne();
   else if (act === 'undo') undo();
   else if (act === 'reset') resetBoard();
+  else if (act === 'padmap') {
+    document.getElementById('padmap-modal').classList.remove('hidden');
+  }
   closeMenu();
 }
+// 패드 매핑 모달 닫기 (외부 클릭 / ESC)
+document.addEventListener('click', e => {
+  const m = document.getElementById('padmap-modal');
+  if (!m.classList.contains('hidden') && !m.contains(e.target)) m.classList.add('hidden');
+});
 // 메뉴 항목 마우스 클릭
 document.querySelectorAll('#menu .item:not(.sep)').forEach((el, i) => {
   el.addEventListener('click', () => { menuIdx = i; refreshMenu(); menuSelect(); });
@@ -1118,10 +1142,11 @@ function pollGP() {
     // D-pad → 숫자 1-9 (12=up,13=down,14=left,15=right 외에 face/shoulder)
     // 0=A: 정답1칸, 1=B: 지우기, 2=X: 분석토글, 3=Y: 새문제, 4=LB: undo, 5=RB: 정답1칸
     const map = [
-      // Y(3) 매핑 제거 — 실수 방지
+      // 새 매핑: A=선택 / B=지우기 / X=비움 / Y=되돌리기 / LB=이전숫자 / RB=다음숫자
       [0, () => menuOpen ? menuSelect() : gpAPress(), 'a'],
       [1, () => menuOpen ? closeMenu() : eraseCell(), 'b'],
-      [2, () => { if (!menuOpen) toggleMark(); }, 'x'],
+      // X(2) — 비움 (사용자 요청). 아무 동작 X
+      [3, () => { if (!menuOpen) undo(); }, 'y'],
       [4, () => { if (!menuOpen) jumpValue(-1); }, 'lb'],
       [5, () => { if (!menuOpen) jumpValue(1); }, 'rb'],
       [8, () => toggleBW(), 'sel'],
@@ -1134,9 +1159,9 @@ function pollGP() {
     if (!window._triggerT) window._triggerT = 0;
     if ((ltDown || rtDown) && !menuOpen) {
       window._triggerT++;
-      // 가속: 첫 30프레임 = 간격 8, 다음 50프레임 = 간격 5, 그 후 = 간격 3
+      // 가속: 첫 즉시, 그 후 점점 빨라짐 (5→3→2→1)
       var t = window._triggerT;
-      var iv = t < 30 ? 8 : (t < 80 ? 5 : 3);
+      var iv = t === 1 ? 1 : (t < 18 ? 5 : (t < 40 ? 3 : (t < 80 ? 2 : 1)));
       if (t === 1 || t % iv === 0) {
         var dir = rtDown ? 1 : -1;
         var target = activeNumber + dir;
