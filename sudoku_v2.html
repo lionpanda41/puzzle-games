@@ -63,13 +63,13 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
   text-shadow:0 0 6px rgba(126,216,238,0.4)
 }
 .cell.error{color:var(--error) !important}
-.cell.selected{outline:4px solid var(--selected);outline-offset:-4px;z-index:4;animation:blink-sel 0.9s ease-in-out infinite}
-@keyframes blink-sel{0%,100%{outline-color:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.35)}50%{outline-color:#fff7d6;box-shadow:0 0 16px rgba(251,191,36,0.8)}}
+.cell.selected{outline:5px solid #fff7d6;outline-offset:-5px;z-index:10;animation:blink-sel 0.7s ease-in-out infinite;box-shadow:0 0 24px rgba(255,247,214,0.9), inset 0 0 0 1px #fbbf24}
+@keyframes blink-sel{0%,100%{outline-color:#fff7d6;box-shadow:0 0 20px rgba(255,247,214,0.85), inset 0 0 0 1px #fbbf24}50%{outline-color:#fbbf24;box-shadow:0 0 32px rgba(251,191,36,1.0), inset 0 0 0 1px #fff}}
 .cell.highlight{box-shadow:inset 0 0 100px rgba(251,191,36,0.15)}
-/* 행/열 크로스 — 보라 (점멸 없음). 교차 셀은 두 shadow 겹쳐 자동 가산 */
-.cell.in-sel-row{box-shadow:inset 0 0 100px rgba(167,139,250,0.30),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight)}
-.cell.in-sel-col{box-shadow:inset 0 0 100px rgba(167,139,250,0.30),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
-.cell.in-sel-row.in-sel-col{box-shadow:inset 0 0 100px rgba(167,139,250,0.55),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
+/* 행/열 크로스 — 보라 옅게 (선택 셀 묻히지 않게). 교차 셀도 너무 진하지 않게 */
+.cell.in-sel-row{box-shadow:inset 0 0 100px rgba(167,139,250,0.18),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight)}
+.cell.in-sel-col{box-shadow:inset 0 0 100px rgba(167,139,250,0.18),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
+.cell.in-sel-row.in-sel-col{box-shadow:inset 0 0 100px rgba(167,139,250,0.30),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
 .cell.same-num{background:var(--same-num) !important;color:#fff !important;box-shadow:inset 0 0 0 2px var(--selected)}
 /* 난이도 색상 — CSS 변수 (개발자 모드로 변경 가능) */
 .cell.diff-answer{background-color:var(--diff-answer);color:#0f172a !important;animation:blink-answer 1.1s ease-in-out infinite}
