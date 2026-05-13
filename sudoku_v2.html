@@ -162,6 +162,8 @@ body.bw{
 #actions .toggle-btn{background:#0f1e2e;border-color:#1e3a52}
 #actions .action-btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
 #actions .action-btn.primary{background:#1d4ed8;color:#fff;border-color:#3b82f6}
+#actions .mode-btn{padding:6px 10px;font-size:16px}
+#actions .mode-btn.active{background:#fbbf24;color:#111827;border-color:#fbbf24}
 #actions .action-btn.primary:hover{background:#2563eb}
 #actions .dev-btn{opacity:0.4}
 #actions .dev-btn:hover{opacity:1}
@@ -202,6 +204,10 @@ body.bw{
   <button id="btn-new" class="action-btn primary">새문제</button>
   <button id="btn-help" class="action-btn">?</button>
   <button id="btn-dev" class="action-btn dev-btn" title="개발자 모드">🎨</button>
+  <span class="btn-sep" aria-hidden="true"></span>
+  <button id="btn-mode-mouse" class="action-btn mode-btn" title="키마">🖱️</button>
+  <button id="btn-mode-pad" class="action-btn mode-btn" title="패드">🎮</button>
+  <button id="btn-mode-touch" class="action-btn mode-btn" title="터치">📱</button>
 </div>
 <div id="dev" class="hidden">
   <div class="title">🎨 개발자 모드 — 색상</div>
@@ -309,7 +315,8 @@ let gameOver = false;
 let activeNumber = 1;  // 현재 활성 숫자 (0 = 끔)
 let lockHover = false;  // 좌클릭 시 true → 호버 selected 따라옴 차단
 // 입력 모드: 'mouse' | 'touch' | 'gamepad'. 마지막 이벤트로 자동 전환.
-let inputMode = ('ontouchstart' in window && navigator.maxTouchPoints > 0) ? 'touch' : 'mouse';
+let inputMode = localStorage.getItem('sudoku-input-mode') || (('ontouchstart' in window && navigator.maxTouchPoints > 0) ? 'touch' : 'mouse');
+let inputModeLocked = !!localStorage.getItem('sudoku-input-mode');  // 메뉴로 지정하면 자동 전환 무시
 let difficulty = 36;
 let timerInterval, seconds = 0;
 
@@ -633,7 +640,7 @@ function render() {
       });
       cell.addEventListener('touchstart', e => {
         e.preventDefault();
-        inputMode = 'touch';
+        if (!inputModeLocked) inputMode = 'touch';
         touchCellTap();
       }, {passive: false});
       // PC 호버 — 셀 이동 + 그 셀에 숫자 있으면 activeNumber 자동 동기화 (라인이 따라옴)
@@ -1079,10 +1086,10 @@ document.addEventListener('wheel', e => {
 // Gamepad
 let gpActive = false, gpRow = 0, gpCol = 0, lastBtn = {};
 let gpAxisCooldown = 0;
-window.addEventListener('gamepadconnected', () => { gpActive = true; inputMode = 'gamepad'; document.getElementById('pad-status').textContent = '🎮 패드 연결됨'; });
-// 마우스 활동 감지 → mouse 모드
-window.addEventListener('mousemove', () => { if (inputMode !== 'gamepad') inputMode = 'mouse'; }, {passive:true, once:false});
-window.addEventListener('mousedown', () => { inputMode = 'mouse'; }, {passive:true});
+window.addEventListener('gamepadconnected', () => { gpActive = true; if (!inputModeLocked) inputMode = 'gamepad'; document.getElementById('pad-status').textContent = '🎮 패드 연결됨'; });
+// 마우스 활동 감지 → mouse 모드 (메뉴로 지정 안 했을 때만)
+window.addEventListener('mousemove', () => { if (!inputModeLocked && inputMode !== 'gamepad') inputMode = 'mouse'; }, {passive:true, once:false});
+window.addEventListener('mousedown', () => { if (!inputModeLocked) inputMode = 'mouse'; }, {passive:true});
 window.addEventListener('gamepaddisconnected', () => { gpActive = false; document.getElementById('pad-status').textContent = ''; });
 
 function pollGP() {
@@ -1156,6 +1163,22 @@ function toggleBW(){
   btn.classList.toggle('active', on);
 }
 document.getElementById('btn-bw').addEventListener('click', toggleBW);
+
+// 입력 모드 메뉴 (키마/패드/터치)
+function setInputMode(mode) {
+  inputMode = mode;
+  inputModeLocked = true;
+  localStorage.setItem('sudoku-input-mode', mode);
+  document.getElementById('btn-mode-mouse').classList.toggle('active', mode === 'mouse');
+  document.getElementById('btn-mode-pad').classList.toggle('active', mode === 'gamepad');
+  document.getElementById('btn-mode-touch').classList.toggle('active', mode === 'touch');
+}
+document.getElementById('btn-mode-mouse').addEventListener('click', () => setInputMode('mouse'));
+document.getElementById('btn-mode-pad').addEventListener('click', () => setInputMode('gamepad'));
+document.getElementById('btn-mode-touch').addEventListener('click', () => setInputMode('touch'));
+// 초기 active 표시
+document.getElementById('btn-mode-' + (inputMode === 'gamepad' ? 'pad' : inputMode)).classList.add('active');
+
 
 document.getElementById('btn-help').addEventListener('click', () => {
   document.getElementById('help').classList.toggle('hidden');
