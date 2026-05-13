@@ -311,7 +311,7 @@ body.bw{
   <div style="color:#fbbf24;font-weight:bold;text-align:center;margin-bottom:10px;font-size:13px">🎮 패드 매핑</div>
   <div><b>A</b> — 선택 / 입력</div>
   <div><b>B</b> — 취소 / 지우기</div>
-  <div><b>X</b> — (비움)</div>
+  <div><b>X</b> — 수동마커 토글</div>
   <div><b>Y</b> — 되돌리기 (undo)</div>
   <div><b>LB</b> — 이전 숫자로 이동</div>
   <div><b>RB</b> — 다음 숫자로 이동</div>
@@ -1152,10 +1152,10 @@ function pollGP() {
     // D-pad → 숫자 1-9 (12=up,13=down,14=left,15=right 외에 face/shoulder)
     // 0=A: 정답1칸, 1=B: 지우기, 2=X: 분석토글, 3=Y: 새문제, 4=LB: undo, 5=RB: 정답1칸
     const map = [
-      // 새 매핑: A=선택 / B=지우기 / X=비움 / Y=되돌리기 / LB=이전숫자 / RB=다음숫자
+      // 매핑: A=선택 / B=지우기 / X=마커 / Y=되돌리기 / LB=이전숫자 / RB=다음숫자
       [0, () => menuOpen ? menuSelect() : gpAPress(), 'a'],
       [1, () => menuOpen ? closeMenu() : eraseCell(), 'b'],
-      // X(2) — 비움 (사용자 요청). 아무 동작 X
+      [2, () => { if (!menuOpen) toggleManual(); }, 'x'],  // X = 수동 마커 토글
       [3, () => { if (!menuOpen) undo(); }, 'y'],
       [4, () => { if (!menuOpen) jumpValue(-1); }, 'lb'],
       [5, () => { if (!menuOpen) jumpValue(1); }, 'rb'],
@@ -1164,8 +1164,9 @@ function pollGP() {
     ];
     // LT(6)=다운 / RT(7)=업 — 마우스 휠 효과: 9개 채워진 숫자 건너뜀 + 누르고 있으면 점진 가속
     // 빈 셀에서만 (given/player에 셀 있으면 그래도 활성숫자만 변경)
-    const ltDown = gp.buttons[6] && gp.buttons[6].pressed;
-    const rtDown = gp.buttons[7] && gp.buttons[7].pressed;
+    // LT(buttons[6])/RT(buttons[7]) — analog trigger: pressed 또는 value > 0.3
+    const ltDown = gp.buttons[6] && (gp.buttons[6].pressed || (gp.buttons[6].value !== undefined && gp.buttons[6].value > 0.3));
+    const rtDown = gp.buttons[7] && (gp.buttons[7].pressed || (gp.buttons[7].value !== undefined && gp.buttons[7].value > 0.3));
     if (!window._triggerT) window._triggerT = 0;
     if ((ltDown || rtDown) && !menuOpen) {
       window._triggerT++;
