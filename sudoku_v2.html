@@ -311,9 +311,12 @@ body.bw{
   <div style="color:#fbbf24;font-weight:bold;text-align:center;margin-bottom:10px;font-size:13px">🎮 패드 키 세팅</div>
   <div style="font-size:10px;opacity:0.7;margin-bottom:8px">각 행 [학습] 누르고 원하는 버튼 눌러서 재매핑. [기본] 버튼으로 초기화.</div>
   <div id="padmap-rows"></div>
-  <div style="margin-top:10px;display:flex;gap:8px;justify-content:center">
-    <button id="padmap-reset" style="background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 14px;border-radius:4px;cursor:pointer">전체 기본값 복원</button>
-    <button id="padmap-done" style="background:#1d4ed8;border:1px solid #3b82f6;color:#fff;padding:6px 14px;border-radius:4px;cursor:pointer">완료</button>
+  <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+    <button id="padmap-export" style="background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:11px">📤 .json 내보내기</button>
+    <button id="padmap-import" style="background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:11px">📥 .json 가져오기</button>
+    <input id="padmap-file" type="file" accept=".json,.txt" style="display:none">
+    <button id="padmap-reset" style="background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:11px">기본값 복원</button>
+    <button id="padmap-done" style="background:#1d4ed8;border:1px solid #3b82f6;color:#fff;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:11px">완료</button>
   </div>
   <div style="margin-top:10px;font-size:10px;opacity:0.6;text-align:center">화면 클릭/ESC = 닫기</div>
 </div>
@@ -947,28 +950,56 @@ function menuSelect(){
 }
 // 패드 매핑 모달 닫기 — X 버튼, 모달 자체 클릭, ESC, 외부 클릭 모두 지원
 // 패드 키 세팅 (학습 가능)
+// PAD_ACTIONS — type 'btn' 또는 'axis'. axis는 axis 인덱스 + 양수/음수 방향
 const PAD_ACTIONS = [
-  {id:'a', name:'A — 선택/입력', stdIdx:0, rawIdx:0},
-  {id:'b', name:'B — 지우기/취소', stdIdx:1, rawIdx:1},
-  {id:'x', name:'X — 자동마커 토글', stdIdx:2, rawIdx:2},
-  {id:'y', name:'Y — 되돌리기', stdIdx:3, rawIdx:3},
-  {id:'lb', name:'LB — 이전 숫자', stdIdx:4, rawIdx:4},
-  {id:'rb', name:'RB — 다음 숫자', stdIdx:5, rawIdx:5},
-  {id:'sel', name:'SELECT — 흑백', stdIdx:8, rawIdx:6},
-  {id:'start', name:'START — 메뉴', stdIdx:9, rawIdx:7},
-  {id:'l3', name:'L3 — 수동마커', stdIdx:10, rawIdx:9},
-  {id:'r3', name:'R3 — 정답셀 점프', stdIdx:11, rawIdx:10},
+  {id:'a',     name:'A — 선택/입력',       type:'btn', stdIdx:0, rawIdx:0},
+  {id:'b',     name:'B — 지우기/취소',     type:'btn', stdIdx:1, rawIdx:1},
+  {id:'x',     name:'X — 자동마커 토글',   type:'btn', stdIdx:2, rawIdx:2},
+  {id:'y',     name:'Y — 되돌리기',        type:'btn', stdIdx:3, rawIdx:3},
+  {id:'lb',    name:'LB — 이전 숫자',      type:'btn', stdIdx:4, rawIdx:4},
+  {id:'rb',    name:'RB — 다음 숫자',      type:'btn', stdIdx:5, rawIdx:5},
+  {id:'lt',    name:'LT — 활성숫자 ↓',     type:'axis', stdAxis:-1, rawAxis:2, dir:'pos', stdBtn:6},
+  {id:'rt',    name:'RT — 활성숫자 ↑',     type:'axis', stdAxis:-1, rawAxis:5, dir:'pos', stdBtn:7},
+  {id:'sel',   name:'SELECT — 흑백',       type:'btn', stdIdx:8, rawIdx:6},
+  {id:'start', name:'START — 메뉴',        type:'btn', stdIdx:9, rawIdx:7},
+  {id:'l3',    name:'L3 — 수동마커',       type:'btn', stdIdx:10, rawIdx:9},
+  {id:'r3',    name:'R3 — 정답셀 점프',    type:'btn', stdIdx:11, rawIdx:10},
 ];
 let padmapCustom = {};
 try { padmapCustom = JSON.parse(localStorage.getItem('sudoku-padmap') || '{}'); } catch(e){}
 let _learningId = null;
 let _learnPrevBtns = null;
+let _learnPrevAxes = null;
 
-function getPadIdx(actionId, isStd) {
-  if (padmapCustom[actionId] !== undefined) return padmapCustom[actionId];
+// padmapCustom 형식: {id: {type:'btn'|'axis', idx:N, dir:'pos'|'neg'}}
+function getPadBinding(actionId, isStd) {
+  if (padmapCustom[actionId]) return padmapCustom[actionId];
   const a = PAD_ACTIONS.find(x => x.id === actionId);
-  if (!a) return -1;
-  return isStd ? a.stdIdx : a.rawIdx;
+  if (!a) return null;
+  if (a.type === 'btn') return {type:'btn', idx: isStd ? a.stdIdx : a.rawIdx};
+  return {type:'axis', idx: isStd ? a.stdAxis : a.rawAxis, dir: a.dir, stdBtn: a.stdBtn};
+}
+function getPadIdx(actionId, isStd) {
+  const b = getPadBinding(actionId, isStd);
+  return b ? b.idx : -1;
+}
+// 패드 액션 활성 여부 — btn pressed 또는 axis 방향 임계 넘으면 true
+function isPadActive(gp, actionId, isStd) {
+  const b = getPadBinding(actionId, isStd);
+  if (!b) return false;
+  if (b.type === 'btn') {
+    const bt = gp.buttons[b.idx];
+    return !!(bt && (bt.pressed || bt.value > 0.3));
+  }
+  // axis (LT/RT 또는 다른) — standard 시 stdBtn 폴백
+  if (isStd && b.stdBtn !== undefined) {
+    const bt = gp.buttons[b.stdBtn];
+    if (bt && (bt.pressed || bt.value > 0.3)) return true;
+  }
+  if (b.idx >= 0 && gp.axes[b.idx] !== undefined) {
+    return b.dir === 'pos' ? gp.axes[b.idx] > 0.3 : gp.axes[b.idx] < -0.3;
+  }
+  return false;
 }
 
 function buildPadmapRows() {
@@ -985,18 +1016,18 @@ function buildPadmapRows() {
     lbl.textContent = a.name;
     lbl.style.cssText = 'flex:1;font-size:11px';
     const idxSpan = document.createElement('span');
-    idxSpan.style.cssText = 'min-width:50px;color:#fbbf24;font-family:monospace;font-size:11px';
-    const idx = getPadIdx(a.id, isStd);
-    idxSpan.textContent = 'btn[' + idx + ']';
+    idxSpan.style.cssText = 'min-width:80px;color:#fbbf24;font-family:monospace;font-size:11px';
+    const bd = getPadBinding(a.id, isStd);
+    idxSpan.textContent = bd ? (bd.type === 'btn' ? 'btn['+bd.idx+']' : 'ax['+bd.idx+']'+(bd.dir||'')) : '-';
     const learnBtn = document.createElement('button');
     learnBtn.textContent = '학습';
     learnBtn.style.cssText = 'background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer';
     learnBtn.addEventListener('click', e => {
       e.stopPropagation();
       _learningId = a.id;
-      // 현재 buttons 상태 snapshot
+      // 현재 buttons + axes 상태 snapshot
       const gps2 = navigator.getGamepads();
-      for (const g of gps2) if (g) { _learnPrevBtns = g.buttons.map(b => b.pressed); break; }
+      for (const g of gps2) if (g) { _learnPrevBtns = g.buttons.map(b => b.pressed); _learnPrevAxes = g.axes.slice(); break; }
       learnBtn.textContent = '눌러봐...';
       learnBtn.style.background = '#fbbf24';
       learnBtn.style.color = '#000';
@@ -1023,19 +1054,39 @@ function padLearnPoll() {
   const gps = navigator.getGamepads();
   for (const g of gps) {
     if (!g) continue;
+    // 버튼 학습
     for (let i = 0; i < g.buttons.length; i++) {
       const wasPressed = _learnPrevBtns && _learnPrevBtns[i];
       const nowPressed = g.buttons[i].pressed || g.buttons[i].value > 0.5;
       if (!wasPressed && nowPressed) {
-        padmapCustom[_learningId] = i;
+        padmapCustom[_learningId] = {type:'btn', idx:i};
         localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
-        _learningId = null;
-        _learnPrevBtns = null;
+        _learningId = null; _learnPrevBtns = null; _learnPrevAxes = null;
+        buildPadmapRows();
+        return;
+      }
+    }
+    // axis 학습 (방향까지 감지)
+    for (let j = 0; j < g.axes.length; j++) {
+      const prev = _learnPrevAxes && _learnPrevAxes[j] !== undefined ? _learnPrevAxes[j] : 0;
+      const cur = g.axes[j];
+      if (Math.abs(prev) < 0.3 && cur > 0.7) {
+        padmapCustom[_learningId] = {type:'axis', idx:j, dir:'pos'};
+        localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
+        _learningId = null; _learnPrevBtns = null; _learnPrevAxes = null;
+        buildPadmapRows();
+        return;
+      }
+      if (Math.abs(prev) < 0.3 && cur < -0.7) {
+        padmapCustom[_learningId] = {type:'axis', idx:j, dir:'neg'};
+        localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
+        _learningId = null; _learnPrevBtns = null; _learnPrevAxes = null;
         buildPadmapRows();
         return;
       }
     }
     _learnPrevBtns = g.buttons.map(b => b.pressed);
+    _learnPrevAxes = g.axes.slice();
     return;
   }
 }
@@ -1050,6 +1101,40 @@ function padLearnPoll() {
     padmapCustom = {};
     localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
     buildPadmapRows();
+  });
+  // 내보내기 — sudoku-padmap.json 다운로드
+  document.getElementById('padmap-export').addEventListener('click', e => {
+    e.stopPropagation();
+    const data = JSON.stringify(padmapCustom, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sudoku-padmap.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  // 가져오기 — file input
+  document.getElementById('padmap-import').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('padmap-file').click();
+  });
+  document.getElementById('padmap-file').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const j = JSON.parse(reader.result);
+        if (typeof j === 'object' && j) {
+          padmapCustom = j;
+          localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
+          buildPadmapRows();
+        }
+      } catch(err) { alert('가져오기 실패: ' + err.message); }
+    };
+    reader.readAsText(f);
+    e.target.value = '';
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !m.classList.contains('hidden')) close();
@@ -1308,8 +1393,8 @@ function pollGP() {
     // 표준 매핑 패드(Xbox/PS)는 buttons[6/7]로도 보고됨 — 둘 다 체크
     function _btn(i){ var b = gp.buttons[i]; return !!(b && (b.pressed || b.value > 0.3)); }
     function _ax(i){ return gp.axes[i] !== undefined && gp.axes[i] > 0.3; }
-    var ltDown = _ax(2) || _btn(6) || _btn(10);
-    var rtDown = _ax(5) || _btn(7) || _btn(11);
+    var ltDown = isPadActive(gp, 'lt', isStd);
+    var rtDown = isPadActive(gp, 'rt', isStd);
     // 패드 입력 디버그 표시 (사용자 패드의 어떤 버튼/축이 활동하는지 확인용)
     var pressedBtns = [];
     for (var bi = 0; bi < gp.buttons.length; bi++) {
