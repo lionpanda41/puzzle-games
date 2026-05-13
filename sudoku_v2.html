@@ -242,7 +242,7 @@ body.bw{
   <div>SELECT — 마커 / START — 새 문제</div>
 
   <div style="margin-top:10px"><b>💡 색상 힌트 의미</b></div>
-  <div>옅은 회색=정답 / 초록=유력(2후보) / 진회=가능(3) / 빨강=어려움(4+)</div>
+  <div><b style="color:#7ea564">밝은녹색·깜빡임</b>=정답(1후보) / <span style="color:#5e7d4a">짙은녹</span>=유력(2) / <span style="color:#a0adba">회청</span>=가능(3) / <span style="color:#bf616a">빨강</span>=어려움(4+)</div>
 
   <div style="margin-top:10px;font-size:11px;opacity:0.7">화면 클릭 / ESC = 닫기</div>
 </div>
@@ -845,9 +845,9 @@ function toggleColor() {
   if (modeColor && !localStorage.getItem('sudoku-color-tip-seen')) {
     showToast(
       '💡 <b>색상 힌트</b><br>' +
-      '<span style="color:#a5adb8">옅은회색</span>=정답(1후보) · ' +
-      '<span style="color:#86c267">초록</span>=유력(2) · ' +
-      '<span style="color:#6b7689">진회</span>=가능(3) · ' +
+      '<span style="color:#7ea564;font-weight:bold">밝은녹색·깜빡임</span>=정답(1후보) · ' +
+      '<span style="color:#5e7d4a">짙은녹</span>=유력(2) · ' +
+      '<span style="color:#a0adba">회청</span>=가능(3) · ' +
       '<span style="color:#bf616a">빨강</span>=어려움(4+)',
       6000
     );
