@@ -122,7 +122,7 @@ body.bw{
 .numpad-btn.done{opacity:0.3}
 .numpad-btn.active{background:#1d4ed8;color:#fff;border-color:#3b82f6}
 .numpad-btn .count{position:absolute;bottom:1px;right:3px;font-size:11px;color:#94a3b8;font-weight:bold}
-#pad-status{position:fixed;bottom:8px;right:12px;font-size:10px;color:#1e293b}
+#pad-status{position:fixed;bottom:8px;right:12px;font-size:10px;color:#94a3b8;background:rgba(15,23,42,0.7);padding:4px 8px;border-radius:4px;max-width:96vw;font-family:monospace;line-height:1.4}
 #dev{position:fixed;top:50%;right:20px;transform:translateY(-50%);background:rgba(15,23,42,0.97);padding:14px 18px;border-radius:8px;border:2px solid #fbbf24;font-size:12px;color:#cbd5e1;z-index:25;min-width:240px;max-height:90vh;overflow-y:auto}
 #dev.hidden{display:none}
 #dev .title{color:#fbbf24;font-weight:bold;margin-bottom:10px;text-align:center;font-size:11px;letter-spacing:2px}
@@ -1155,7 +1155,7 @@ function pollGP() {
       // 매핑: A=선택 / B=지우기 / X=마커 / Y=되돌리기 / LB=이전숫자 / RB=다음숫자
       [0, () => menuOpen ? menuSelect() : gpAPress(), 'a'],
       [1, () => menuOpen ? closeMenu() : eraseCell(), 'b'],
-      [2, () => { if (!menuOpen) toggleManual(); }, 'x'],  // X = 수동 마커 토글
+      [2, () => { if (!menuOpen) toggleMark(); }, "x"],  // X = 자동 마커 토글
       [3, () => { if (!menuOpen) undo(); }, 'y'],
       [4, () => { if (!menuOpen) jumpValue(-1); }, 'lb'],
       [5, () => { if (!menuOpen) jumpValue(1); }, 'rb'],
@@ -1164,9 +1164,21 @@ function pollGP() {
     ];
     // LT(6)=다운 / RT(7)=업 — 마우스 휠 효과: 9개 채워진 숫자 건너뜀 + 누르고 있으면 점진 가속
     // 빈 셀에서만 (given/player에 셀 있으면 그래도 활성숫자만 변경)
-    // LT(buttons[6])/RT(buttons[7]) — analog trigger: pressed 또는 value > 0.3
-    const ltDown = gp.buttons[6] && (gp.buttons[6].pressed || (gp.buttons[6].value !== undefined && gp.buttons[6].value > 0.3));
-    const rtDown = gp.buttons[7] && (gp.buttons[7].pressed || (gp.buttons[7].value !== undefined && gp.buttons[7].value > 0.3));
+    // LT/RT — 패드별 다양. buttons[6/7] pressed 또는 value > 0.3
+    var ltDown = !!(gp.buttons[6] && (gp.buttons[6].pressed || gp.buttons[6].value > 0.3));
+    var rtDown = !!(gp.buttons[7] && (gp.buttons[7].pressed || gp.buttons[7].value > 0.3));
+    // 패드 입력 디버그 표시 (사용자 패드의 어떤 버튼/축이 활동하는지 확인용)
+    var pressedBtns = [];
+    for (var bi = 0; bi < gp.buttons.length; bi++) {
+      if (gp.buttons[bi].pressed || gp.buttons[bi].value > 0.3) pressedBtns.push(bi + ':' + gp.buttons[bi].value.toFixed(1));
+    }
+    var activeAxes = [];
+    for (var ai = 0; ai < gp.axes.length; ai++) {
+      if (Math.abs(gp.axes[ai]) > 0.2) activeAxes.push(ai + ':' + gp.axes[ai].toFixed(2));
+    }
+    if (pressedBtns.length || activeAxes.length) {
+      document.getElementById('pad-status').textContent = '🎮 B[' + pressedBtns.join(',') + '] A[' + activeAxes.join(',') + ']';
+    }
     if (!window._triggerT) window._triggerT = 0;
     if ((ltDown || rtDown) && !menuOpen) {
       window._triggerT++;
