@@ -140,6 +140,7 @@ body.bw{
   #legend{display:none !important}  /* 모바일에선 범례 숨김 (보드 우선) */
 }
 #legend.hidden{display:none}
+#padmap-modal.hidden{display:none}
 #legend .item{display:flex;align-items:center;gap:8px}
 #legend .item .lg{display:inline-block;width:28px;height:20px;border-radius:3px;border:1px solid rgba(255,255,255,0.1)}
 #legend .item .nm{font-weight:bold;min-width:55px}
@@ -305,7 +306,8 @@ body.bw{
   <div class="hint">스틱↑↓ · A 선택 · B/START 닫기</div>
 </div>
 <!-- 패드 매핑 모달 -->
-<div id="padmap-modal" class="hidden" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #fbbf24;border-radius:10px;padding:18px 24px;z-index:30;font-size:12px;color:#cbd5e1;line-height:1.7;min-width:280px">
+<div id="padmap-modal" class="hidden" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #fbbf24;border-radius:10px;padding:18px 24px;z-index:30;font-size:12px;color:#cbd5e1;line-height:1.7;min-width:280px;cursor:pointer">
+  <button id="padmap-close" style="position:absolute;top:6px;right:10px;background:transparent;border:0;color:#fbbf24;font-size:20px;cursor:pointer;line-height:1">✕</button>
   <div style="color:#fbbf24;font-weight:bold;text-align:center;margin-bottom:10px;font-size:13px">🎮 패드 매핑</div>
   <div><b>A</b> — 선택 / 입력</div>
   <div><b>B</b> — 취소 / 지우기</div>
@@ -924,11 +926,19 @@ function menuSelect(){
   }
   closeMenu();
 }
-// 패드 매핑 모달 닫기 (외부 클릭 / ESC)
-document.addEventListener('click', e => {
+// 패드 매핑 모달 닫기 — X 버튼, 모달 자체 클릭, ESC, 외부 클릭 모두 지원
+(function(){
   const m = document.getElementById('padmap-modal');
-  if (!m.classList.contains('hidden') && !m.contains(e.target)) m.classList.add('hidden');
-});
+  const close = () => m.classList.add('hidden');
+  document.getElementById('padmap-close').addEventListener('click', e => { e.stopPropagation(); close(); });
+  m.addEventListener('click', close);  // 모달 어디든 클릭하면 닫힘
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !m.classList.contains('hidden')) close();
+  });
+  document.addEventListener('click', e => {
+    if (!m.classList.contains('hidden') && !m.contains(e.target) && e.target.getAttribute('data-act') !== 'padmap') close();
+  }, true);  // capture phase
+})();
 // 메뉴 항목 마우스 클릭
 document.querySelectorAll('#menu .item:not(.sep)').forEach((el, i) => {
   el.addEventListener('click', () => { menuIdx = i; refreshMenu(); menuSelect(); });
