@@ -67,7 +67,7 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 @keyframes blink-sel{0%,100%{outline-color:#fff7d6;box-shadow:0 0 20px rgba(255,247,214,0.85), inset 0 0 0 1px #fbbf24}50%{outline-color:#fbbf24;box-shadow:0 0 32px rgba(251,191,36,1.0), inset 0 0 0 1px #fff}}
 .cell.highlight{box-shadow:inset 0 0 100px rgba(251,191,36,0.15)}
 /* 행/열 크로스 — 보라 overlay 레이어 (셀 전체 물들임, 자식 div로 자연 가산) */
-.cell .row-overlay,.cell .col-overlay{position:absolute;inset:0;pointer-events:none;background:rgba(167,139,250,0.32);z-index:1}
+.cell .row-overlay,.cell .col-overlay{position:absolute;inset:0;pointer-events:none;background:rgba(167,139,250,0.70);z-index:1}
 /* 행/열 경계 thin highlight (한 줄짜리 화살표) */
 .cell.in-sel-row{box-shadow:inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight)}
 .cell.in-sel-col{box-shadow:inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
