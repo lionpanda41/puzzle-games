@@ -318,6 +318,7 @@ body.bw{
   <div><b>LT</b> — 활성숫자 ↓ (빈 칸 휠 효과)</div>
   <div><b>RT</b> — 활성숫자 ↑ (빈 칸 휠 효과, 누르면 가속)</div>
   <div><b>방향키/스틱</b> — 셀 이동 또는 메뉴 항목</div>
+  <div><b>R3</b> — 정답 셀(1후보)로 즉시 점프</div>
   <div><b>SELECT</b> — 흑백 토글 / <b>START</b> — 메뉴</div>
   <div style="margin-top:10px;font-size:10px;opacity:0.6">화면 클릭/ESC = 닫기</div>
 </div>
@@ -753,6 +754,18 @@ function numpadClick(n) {
 }
 
 // 같은 숫자 셀 중 (선택 셀에서) 가장 가까운 곳으로 selRow/selCol 점프
+function jumpToHiddenSingle() {
+  // 현재 activeNumber의 hidden single(유일 후보) 셀로 즉시 점프 — R3
+  if (activeNumber === 0) return;
+  for (var r = 0; r < 9; r++)
+    for (var c = 0; c < 9; c++)
+      if (!board[r][c] && !given[r][c] && canPlaceActive(r, c) && isActiveHiddenSingle(r, c)) {
+        selRow = r; selCol = c;
+        render();
+        return;
+      }
+}
+
 function jumpToValue(n) {
   const cells = [];
   for (let r = 0; r < 9; r++)
@@ -1161,7 +1174,7 @@ function pollGP() {
         selRow = gpRow; selCol = gpCol;
         render();
       }
-      gpAxisCooldown = 2; // ~100ms (이전 200ms 너무 느림)
+      gpAxisCooldown = 3; // ~150ms
     }
     if (gpAxisCooldown > 0) gpAxisCooldown--;
     // D-pad → 숫자 1-9 (12=up,13=down,14=left,15=right 외에 face/shoulder)
@@ -1174,6 +1187,7 @@ function pollGP() {
       [3, () => { if (!menuOpen) undo(); }, 'y'],
       [4, () => { if (!menuOpen) jumpValue(-1); }, 'lb'],
       [5, () => { if (!menuOpen) jumpValue(1); }, 'rb'],
+      [11, () => { if (!menuOpen) jumpToHiddenSingle(); }, 'r3'],
       [8, () => toggleBW(), 'sel'],
       [9, () => toggleMenu(), 'start'],
     ];
