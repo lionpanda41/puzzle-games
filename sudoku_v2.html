@@ -47,8 +47,8 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 .cell.given{color:var(--given)}
 .cell.player{color:var(--player)}
 .cell.error{color:var(--error) !important}
-.cell.selected{outline:3px solid var(--selected);outline-offset:-3px;z-index:4;box-shadow:inset 0 0 0 1px var(--cell);animation:blink-sel 1.4s ease-in-out infinite}
-@keyframes blink-sel{0%,100%{outline-color:var(--selected)}50%{outline-color:rgba(235,203,139,0.4)}}
+.cell.selected{outline:4px solid var(--selected);outline-offset:-4px;z-index:4;animation:blink-sel 0.9s ease-in-out infinite}
+@keyframes blink-sel{0%,100%{outline-color:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.35)}50%{outline-color:#fff7d6;box-shadow:0 0 16px rgba(251,191,36,0.8)}}
 .cell.highlight{box-shadow:inset 0 0 100px rgba(251,191,36,0.15)}
 .cell.in-sel-row{box-shadow:inset 0 0 100px rgba(251,191,36,0.15),inset 0 2px 0 var(--highlight),inset 0 -2px 0 var(--highlight)}
 .cell.in-sel-col{box-shadow:inset 0 0 100px rgba(251,191,36,0.15),inset 2px 0 0 var(--highlight),inset -2px 0 0 var(--highlight)}
@@ -167,7 +167,8 @@ body.bw{
 <div id="board"></div>
 <div id="numpad"></div>
 <div id="actions">
-  <button id="btn-mark" class="toggle-btn">마커 OFF</button>
+  <button id="btn-mark" class="toggle-btn">자동마커 OFF</button>
+  <button id="btn-manual" class="toggle-btn">수동마커 OFF</button>
   <button id="btn-line" class="toggle-btn">라인 OFF</button>
   <button id="btn-color" class="toggle-btn">색상 OFF</button>
   <button id="btn-bw" class="toggle-btn">흑백 OFF</button>
@@ -853,15 +854,38 @@ function setMode(name, btnId, state) {
   render();
 }
 function toggleMark() {
-  markLevel = (markLevel + 1) % 5;
+  // 자동 마커만 cycle: 0(OFF) → 2(4+) → 3(3+) → 4(전체) → 0. 수동(1)은 별도 버튼.
+  if (markLevel === 0) markLevel = 2;
+  else if (markLevel === 2) markLevel = 3;
+  else if (markLevel === 3) markLevel = 4;
+  else if (markLevel === 4) markLevel = 0;
+  else markLevel = 2;  // 1(수동)에서 자동 누르면 2로 (수동 끄고 자동 시작)
   const btn = document.getElementById('btn-mark');
-  const labels = ['마커 OFF', '마커 수동', '마커 4+', '마커 3+', '마커 전체'];
-  btn.textContent = labels[markLevel];
-  btn.classList.toggle('active', markLevel > 0);
-  // 자동 모드 끄면 autoNotes만 비움. 사용자 수동 노트(notes)는 항상 보존
-  if (markLevel === 0 || markLevel === 1) {
+  const labels = {0:'자동마커 OFF', 2:'자동마커 4+', 3:'자동마커 3+', 4:'자동마커 전체'};
+  btn.textContent = labels[markLevel] || '자동마커 OFF';
+  btn.classList.toggle('active', markLevel >= 2);
+  if (markLevel < 2) {
     autoNotes = Array.from({length:9}, () => Array.from({length:9}, () => []));
   }
+  // 수동마커 표시는 분리. 자동 켜면 수동 끔 (배타)
+  document.getElementById('btn-manual').textContent = '수동마커 OFF';
+  document.getElementById('btn-manual').classList.remove('active');
+  render();
+}
+function toggleManual() {
+  // 수동 마커 ON/OFF 토글. 자동(2~4)이 켜져 있으면 자동을 끄고 수동 켬
+  if (markLevel === 1) {
+    markLevel = 0;
+  } else {
+    markLevel = 1;
+    autoNotes = Array.from({length:9}, () => Array.from({length:9}, () => []));
+  }
+  const btnM = document.getElementById('btn-manual');
+  btnM.textContent = markLevel === 1 ? '수동마커 ON' : '수동마커 OFF';
+  btnM.classList.toggle('active', markLevel === 1);
+  // 자동 버튼은 OFF로
+  document.getElementById('btn-mark').textContent = '자동마커 OFF';
+  document.getElementById('btn-mark').classList.remove('active');
   render();
 }
 function toggleLine()  { setMode('line',  'btn-line',  !modeLine); }
@@ -1061,6 +1085,7 @@ document.getElementById('btn-hard').addEventListener('click', () => newGame(28))
 document.getElementById('btn-fill').addEventListener('click', fillOne);
 document.getElementById('btn-undo').addEventListener('click', undo);
 document.getElementById('btn-mark').addEventListener('click', toggleMark);
+document.getElementById('btn-manual').addEventListener('click', toggleManual);
 document.getElementById('btn-line').addEventListener('click', toggleLine);
 document.getElementById('btn-color').addEventListener('click', toggleColor);
 function toggleBW(){
