@@ -559,20 +559,21 @@ function render() {
         cell.classList.add('active-num');
       }
       // 색상 모드:
-      //  diff-answer (한눈에 보이는 정답) = row/col/box 마지막 빈 칸 + activeNumber 정답
-      //  diff-easy (유력 — 카운트하면 확정) = naked single, hidden single 등
-      //  나머지는 후보 수 기반
+      //  diff-answer (정답, 깜빡) = activeNumber 기준 hidden single (행/열/박스 중 1개 위치만 가능)
+      //  diff-easy (유력) = naked single, 후보 2개
+      //  나머지 후보 수 기반
       if (modeColor && !val && !given[r][c]) {
         const len = getCandidates(r, c).length;
         let cls;
-        if (len === 2) cls = 'diff-easy';
+        if (len === 1) cls = 'diff-easy';   // naked single = 유력 (카운트 필요)
+        else if (len === 2) cls = 'diff-easy';
         else if (len === 3) cls = 'diff-mid';
-        else if (len === 1) cls = 'diff-easy';  // naked single = 유력
         else cls = 'diff-hard';
-        // activeNumber 기준 hidden single이면 유력으로 (이전 정답이었음)
-        if (activeNumber > 0 && canPlaceActive(r, c) && isActiveHiddenSingle(r, c)) cls = 'diff-easy';
-        // 진짜 정답 (한눈에 보이는 마지막 빈 칸) — diff-answer 우선
-        if (isLastEmptyInUnit(r, c) && activeNumber > 0 && canPlaceActive(r, c)) cls = 'diff-answer';
+        // activeNumber hidden single (마지막 빈 칸 포함) = 확정 정답
+        if (activeNumber > 0 && canPlaceActive(r, c) &&
+            (isLastEmptyInUnit(r, c) || isActiveHiddenSingle(r, c))) {
+          cls = 'diff-answer';
+        }
         cell.classList.add(cls);
       }
 
@@ -776,13 +777,14 @@ function isLastEmptyInUnit(r, c) {
 }
 
 function jumpToHiddenSingle() {
-  // 진짜 마지막 빈 칸 (row/col/box 중 빈 칸 1개) + activeNumber 정답 셀만 점프
-  // 풀이/카운팅 필요한 hidden single은 제외 (사용자 의도: 너무 쉬워짐 방지)
+  // 활성숫자의 확정 정답 셀 — row/col/box 중 어느 unit에서든 활성숫자가 들어갈 수 있는 셀이 1개
+  // (마지막 빈 칸 + hidden single 둘 다 포함, naked single은 제외)
   if (activeNumber === 0) return;
   var cells = [];
   for (var r = 0; r < 9; r++)
     for (var c = 0; c < 9; c++)
-      if (isLastEmptyInUnit(r, c) && canPlaceActive(r, c))
+      if (!board[r][c] && !given[r][c] && canPlaceActive(r, c) &&
+          (isLastEmptyInUnit(r, c) || isActiveHiddenSingle(r, c)))
         cells.push([r, c]);
   if (cells.length === 0) return;
   var idx = -1;
