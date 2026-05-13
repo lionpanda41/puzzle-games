@@ -34,7 +34,12 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 #top button.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
 #info{font-size:12px;color:#475569;min-width:60px}
 #timer{font-size:12px;color:#64748b}
-#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:var(--grid-1);gap:1px;border:3px solid var(--board-border);border-radius:2px}
+#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:var(--grid-1);gap:1px;border:3px solid var(--board-border);border-radius:2px;width:min(540px,95vw);aspect-ratio:1/1}
+@media (max-width:768px){
+  .cell{font-size:16px !important}
+  #top button,#actions button{padding:7px 10px;font-size:11px;min-height:36px}
+  .numpad-btn{min-height:42px !important;min-width:42px !important}
+}
 .cell{
   background-color:var(--cell);
   background-image:
@@ -150,6 +155,7 @@ body.bw{
   <button id="btn-undo">되돌리기</button>
   <span id="info"></span>
   <span id="timer">00:00</span>
+  <span id="best" style="font-size:12px;color:#94a3b8"></span>
 </div>
 <div id="board"></div>
 <div id="numpad"></div>
@@ -808,14 +814,33 @@ function toggleMark() {
 function toggleLine()  { setMode('line',  'btn-line',  !modeLine); }
 function toggleColor() { setMode('color', 'btn-color', !modeColor); }
 
+function fmtTime(s) {
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+function bestKey(d) { return 'sudoku-best-' + d; }
+function showBest() {
+  const v = parseInt(localStorage.getItem(bestKey(difficulty)) || '0');
+  const labels = {42:'쉬움', 36:'중간', 28:'어려움'};
+  const lbl = labels[difficulty] || '';
+  document.getElementById('best').textContent = v > 0 ? `🏆 ${lbl} 베스트 ${fmtTime(v)}` : `🏆 ${lbl} 베스트 --:--`;
+}
 function checkWin() {
   for (let r = 0; r < 9; r++)
     for (let c = 0; c < 9; c++)
       if (board[r][c] !== solution[r][c]) return;
   gameOver = true;
   clearInterval(timerInterval);
-  document.getElementById('complete').style.display = 'block';
-  setTimeout(() => { document.getElementById('complete').style.display = 'none'; }, 3000);
+  const prev = parseInt(localStorage.getItem(bestKey(difficulty)) || '0');
+  let msg = '🎉 클리어! ' + fmtTime(seconds);
+  if (!prev || seconds < prev) {
+    localStorage.setItem(bestKey(difficulty), String(seconds));
+    msg += ' (신기록!)';
+    showBest();
+  }
+  const el = document.getElementById('complete');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
 }
 
 function startTimer() {
@@ -848,6 +873,7 @@ function newGame(d) {
       if (board[r][c] === 1) { selRow = r; selCol = c; break outer; }
   render();
   startTimer();
+  showBest();
 }
 
 // Keyboard — e.code 기반 (NumLock/Shift/IME 영향 없음, numpad 키도 정상 동작)
