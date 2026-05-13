@@ -1180,14 +1180,13 @@ function pollGP() {
     // LT(6)=다운 / RT(7)=업 — 마우스 휠 효과: 9개 채워진 숫자 건너뜀 + 누르고 있으면 점진 가속
     // 빈 셀에서만 (given/player에 셀 있으면 그래도 활성숫자만 변경)
     // LT/RT — 패드별 다양. buttons[6/7] pressed 또는 value > 0.3
-    // LT/RT — 패드마다 다양. 일부 패드는 한 axis(2 또는 3)에 LT=음수, RT=양수로 보고
+    // 8BitDo Ultimate/Pro2 검증 매핑 (Linux js0 분석): LT=axes[2], RT=axes[5]
+    // 둘 다 idle -1, 누름 +1 — > 0.3이면 누른 상태로 간주
+    // 표준 매핑 패드(Xbox/PS)는 buttons[6/7]로도 보고됨 — 둘 다 체크
     function _btn(i){ var b = gp.buttons[i]; return !!(b && (b.pressed || b.value > 0.3)); }
-    function _axP(i){ return gp.axes[i] !== undefined && gp.axes[i] > 0.5; }
-    function _axN(i){ return gp.axes[i] !== undefined && gp.axes[i] < -0.5; }
-    // LT: button6/10 또는 axes 음수(같은 축에 LT/RT 분기) 또는 axes[3] 양수(별도 axis)
-    var ltDown = _btn(6) || _btn(10) || _axN(2) || _axN(4) || _axP(3);
-    // RT: button7/11 또는 axes 양수
-    var rtDown = _btn(7) || _btn(11) || _axP(2) || _axP(4) || _axP(5);
+    function _ax(i){ return gp.axes[i] !== undefined && gp.axes[i] > 0.3; }
+    var ltDown = _ax(2) || _btn(6) || _btn(10);
+    var rtDown = _ax(5) || _btn(7) || _btn(11);
     // 패드 입력 디버그 표시 (사용자 패드의 어떤 버튼/축이 활동하는지 확인용)
     var pressedBtns = [];
     for (var bi = 0; bi < gp.buttons.length; bi++) {
