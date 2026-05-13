@@ -794,7 +794,10 @@ function selectCell(r, c) {
 function addNote(n) {
   if (gameOver || given[selRow][selCol] || board[selRow][selCol]) return;
   if (!notes[selRow][selCol]) notes[selRow][selCol] = [];
-  if (!notes[selRow][selCol].includes(n)) notes[selRow][selCol].push(n);
+  // 같은 번호 다시 누르면 토글로 제거 (사용자 의도: 취소)
+  const idx = notes[selRow][selCol].indexOf(n);
+  if (idx >= 0) notes[selRow][selCol].splice(idx, 1);
+  else notes[selRow][selCol].push(n);
   activeNumber = n;
   render();
 }
