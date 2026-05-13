@@ -122,7 +122,7 @@ body.bw{
 .numpad-btn.done{opacity:0.3}
 .numpad-btn.active{background:#1d4ed8;color:#fff;border-color:#3b82f6}
 .numpad-btn .count{position:absolute;bottom:1px;right:3px;font-size:11px;color:#94a3b8;font-weight:bold}
-#pad-status{position:fixed;bottom:8px;right:12px;font-size:10px;color:#94a3b8;background:rgba(15,23,42,0.7);padding:4px 8px;border-radius:4px;max-width:96vw;font-family:monospace;line-height:1.4}
+#pad-status{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:14px;color:#fbbf24;background:rgba(15,23,42,0.95);padding:8px 14px;border-radius:6px;max-width:96vw;font-family:monospace;line-height:1.4;z-index:100;border:1px solid #fbbf24;font-weight:bold}
 #dev{position:fixed;top:50%;right:20px;transform:translateY(-50%);background:rgba(15,23,42,0.97);padding:14px 18px;border-radius:8px;border:2px solid #fbbf24;font-size:12px;color:#cbd5e1;z-index:25;min-width:240px;max-height:90vh;overflow-y:auto}
 #dev.hidden{display:none}
 #dev .title{color:#fbbf24;font-weight:bold;margin-bottom:10px;text-align:center;font-size:11px;letter-spacing:2px}
@@ -1197,9 +1197,10 @@ function pollGP() {
     for (var ai = 0; ai < gp.axes.length; ai++) {
       if (Math.abs(gp.axes[ai]) > 0.2) activeAxes.push(ai + ':' + gp.axes[ai].toFixed(2));
     }
-    if (pressedBtns.length || activeAxes.length) {
-      document.getElementById('pad-status').textContent = '🎮 B[' + pressedBtns.join(',') + '] A[' + activeAxes.join(',') + ']';
-    }
+    // 입력이 있든 없든 항상 표시 (사용자 진단)
+    document.getElementById('pad-status').textContent =
+      '🎮 ' + (gp.id ? gp.id.slice(0,30) : 'pad') +
+      ' B[' + pressedBtns.join(',') + '] A[' + activeAxes.join(',') + ']';
     if (!window._triggerT) window._triggerT = 0;
     if ((ltDown || rtDown) && !menuOpen) {
       window._triggerT++;
