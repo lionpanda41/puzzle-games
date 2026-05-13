@@ -22,7 +22,7 @@
   --bg:#2e3440;           /* nord0: 가장 어두운 배경 */
   --cell:#3b4252;         /* nord1: 셀 */
   --grid-3x3:#4c566a;     /* nord3 */
-  --grid-1:#1a2230;       /* 셀 사이 라인 — 어둡게 (색칠 셀 인접해도 셀 구분 명확) */
+  --grid-1:#5b6478;       /* 셀 사이 얇은 회색 (1px) — 박스 노란 굵은 라인과 명확 대비 */
   --board-border:#4c566a;
   --same-num:#5e81ac;     /* nord10 */
 }
@@ -34,7 +34,7 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 #top button.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
 #info{font-size:13px;color:#cbd5e1;min-width:50px;font-weight:bold}
 #timer{font-size:13px;color:#e2e8f0;font-weight:bold}
-#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:var(--grid-1);gap:2px;border:3px solid var(--board-border);border-radius:2px;width:min(540px,95vw);aspect-ratio:1/1}
+#board{display:grid;grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);background:var(--grid-1);gap:1px;border:5px solid #fbbf24;border-radius:2px;width:min(540px,95vw);aspect-ratio:1/1}
 @media (max-width:768px){
   .cell{font-size:16px !important}
   #top button,#actions button{padding:7px 10px;font-size:11px;min-height:36px}
@@ -478,8 +478,8 @@ function render() {
       cell.style.width = cellSize + 'px';
       cell.style.height = cellSize + 'px';
       cell.style.fontSize = (cellSize * 0.55) + 'px';
-      if (c % 3 === 0 && c > 0) cell.style.borderLeft = '3px solid #88c0d0';
-      if (r % 3 === 0 && r > 0) cell.style.borderTop = '3px solid #88c0d0';
+      if (c % 3 === 0 && c > 0) cell.style.borderLeft = '5px solid #fbbf24';
+      if (r % 3 === 0 && r > 0) cell.style.borderTop = '5px solid #fbbf24';
       const val = board[r][c];
 
       // 라인 모드: 행/열 막힘 = 라인, 박스만 막힘 = X. activeNumber=0이면 OFF
@@ -1142,7 +1142,7 @@ const DEFAULT_COLORS = {
   '--bg': '#2e3440',
   '--cell': '#3b4252',
   '--grid-3x3': '#4c566a',
-  '--grid-1': '#1a2230',
+  '--grid-1': '#5b6478',
   '--board-border': '#4c566a',
 };
 function loadColors() {
