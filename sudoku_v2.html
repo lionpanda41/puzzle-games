@@ -301,27 +301,21 @@ body.bw{
   <div class="item" data-act="fill"><span>정답 1칸</span></div>
   <div class="item" data-act="undo"><span>되돌리기</span></div>
   <div class="item" data-act="reset"><span>초기화 (입력 다 비움)</span></div>
-  <div class="item" data-act="padmap"><span>🎮 패드 매핑 보기</span></div>
+  <div class="item" data-act="padmap"><span>🎮 패드 키 세팅</span></div>
   <div class="item" data-act="close"><span>닫기</span></div>
   <div class="hint">스틱↑↓ · A 선택 · B/START 닫기</div>
 </div>
 <!-- 패드 매핑 모달 -->
-<div id="padmap-modal" class="hidden" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #fbbf24;border-radius:10px;padding:18px 24px;z-index:30;font-size:12px;color:#cbd5e1;line-height:1.7;min-width:280px;cursor:pointer">
+<div id="padmap-modal" class="hidden" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #fbbf24;border-radius:10px;padding:18px 24px;z-index:30;font-size:12px;color:#cbd5e1;line-height:1.6;min-width:320px;max-width:90vw;max-height:90vh;overflow-y:auto">
   <button id="padmap-close" style="position:absolute;top:6px;right:10px;background:transparent;border:0;color:#fbbf24;font-size:20px;cursor:pointer;line-height:1">✕</button>
-  <div style="color:#fbbf24;font-weight:bold;text-align:center;margin-bottom:10px;font-size:13px">🎮 패드 매핑</div>
-  <div><b>A</b> — 선택 / 입력</div>
-  <div><b>B</b> — 취소 / 지우기</div>
-  <div><b>X</b> — 수동마커 토글</div>
-  <div><b>Y</b> — 되돌리기 (undo)</div>
-  <div><b>LB</b> — 이전 숫자로 이동</div>
-  <div><b>RB</b> — 다음 숫자로 이동</div>
-  <div><b>LT</b> — 활성숫자 ↓ (빈 칸 휠 효과)</div>
-  <div><b>RT</b> — 활성숫자 ↑ (빈 칸 휠 효과, 누르면 가속)</div>
-  <div><b>방향키/스틱</b> — 셀 이동 또는 메뉴 항목</div>
-  <div><b>L3</b> — 수동마커 토글</div>
-  <div><b>R3</b> — 정답 셀(1후보)로 즉시 점프</div>
-  <div><b>SELECT</b> — 흑백 토글 / <b>START</b> — 메뉴</div>
-  <div style="margin-top:10px;font-size:10px;opacity:0.6">화면 클릭/ESC = 닫기</div>
+  <div style="color:#fbbf24;font-weight:bold;text-align:center;margin-bottom:10px;font-size:13px">🎮 패드 키 세팅</div>
+  <div style="font-size:10px;opacity:0.7;margin-bottom:8px">각 행 [학습] 누르고 원하는 버튼 눌러서 재매핑. [기본] 버튼으로 초기화.</div>
+  <div id="padmap-rows"></div>
+  <div style="margin-top:10px;display:flex;gap:8px;justify-content:center">
+    <button id="padmap-reset" style="background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 14px;border-radius:4px;cursor:pointer">전체 기본값 복원</button>
+    <button id="padmap-done" style="background:#1d4ed8;border:1px solid #3b82f6;color:#fff;padding:6px 14px;border-radius:4px;cursor:pointer">완료</button>
+  </div>
+  <div style="margin-top:10px;font-size:10px;opacity:0.6;text-align:center">화면 클릭/ESC = 닫기</div>
 </div>
 <div id="pad-status"></div>
 
@@ -900,12 +894,15 @@ function jumpValue(dir) {
 function gpAPress() {
   if (gameOver) return;
   if (given[selRow][selCol]) {
-    // given 셀은 입력 차단, 그 숫자를 activeNumber로
     if (board[selRow][selCol]) setActiveNumber(board[selRow][selCol]);
-  } else {
-    // 빈 셀 + 사용자 입력 셀 둘 다 activeNumber로 덮어쓰기
-    placeNumber(activeNumber);
+    return;
   }
+  // 수동마커 ON + 빈 셀 = 노트 추가 (입력 X)
+  if (markLevel === 1 && !board[selRow][selCol]) {
+    addNote(activeNumber);
+    return;
+  }
+  placeNumber(activeNumber);
 }
 
 // ─── 게임 메뉴 ──────────────────────────────────────
@@ -943,22 +940,124 @@ function menuSelect(){
   else if (act === 'undo') undo();
   else if (act === 'reset') resetBoard();
   else if (act === 'padmap') {
+    buildPadmapRows();
     document.getElementById('padmap-modal').classList.remove('hidden');
   }
   closeMenu();
 }
 // 패드 매핑 모달 닫기 — X 버튼, 모달 자체 클릭, ESC, 외부 클릭 모두 지원
+// 패드 키 세팅 (학습 가능)
+const PAD_ACTIONS = [
+  {id:'a', name:'A — 선택/입력', stdIdx:0, rawIdx:0},
+  {id:'b', name:'B — 지우기/취소', stdIdx:1, rawIdx:1},
+  {id:'x', name:'X — 자동마커 토글', stdIdx:2, rawIdx:2},
+  {id:'y', name:'Y — 되돌리기', stdIdx:3, rawIdx:3},
+  {id:'lb', name:'LB — 이전 숫자', stdIdx:4, rawIdx:4},
+  {id:'rb', name:'RB — 다음 숫자', stdIdx:5, rawIdx:5},
+  {id:'sel', name:'SELECT — 흑백', stdIdx:8, rawIdx:6},
+  {id:'start', name:'START — 메뉴', stdIdx:9, rawIdx:7},
+  {id:'l3', name:'L3 — 수동마커', stdIdx:10, rawIdx:9},
+  {id:'r3', name:'R3 — 정답셀 점프', stdIdx:11, rawIdx:10},
+];
+let padmapCustom = {};
+try { padmapCustom = JSON.parse(localStorage.getItem('sudoku-padmap') || '{}'); } catch(e){}
+let _learningId = null;
+let _learnPrevBtns = null;
+
+function getPadIdx(actionId, isStd) {
+  if (padmapCustom[actionId] !== undefined) return padmapCustom[actionId];
+  const a = PAD_ACTIONS.find(x => x.id === actionId);
+  if (!a) return -1;
+  return isStd ? a.stdIdx : a.rawIdx;
+}
+
+function buildPadmapRows() {
+  const root = document.getElementById('padmap-rows');
+  root.innerHTML = '';
+  // 현재 패드 mapping 감지
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  let isStd = true;
+  for (const g of gps) if (g) { isStd = g.mapping === 'standard'; break; }
+  for (const a of PAD_ACTIONS) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid #1e293b';
+    const lbl = document.createElement('span');
+    lbl.textContent = a.name;
+    lbl.style.cssText = 'flex:1;font-size:11px';
+    const idxSpan = document.createElement('span');
+    idxSpan.style.cssText = 'min-width:50px;color:#fbbf24;font-family:monospace;font-size:11px';
+    const idx = getPadIdx(a.id, isStd);
+    idxSpan.textContent = 'btn[' + idx + ']';
+    const learnBtn = document.createElement('button');
+    learnBtn.textContent = '학습';
+    learnBtn.style.cssText = 'background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer';
+    learnBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      _learningId = a.id;
+      // 현재 buttons 상태 snapshot
+      const gps2 = navigator.getGamepads();
+      for (const g of gps2) if (g) { _learnPrevBtns = g.buttons.map(b => b.pressed); break; }
+      learnBtn.textContent = '눌러봐...';
+      learnBtn.style.background = '#fbbf24';
+      learnBtn.style.color = '#000';
+    });
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = '기본';
+    resetBtn.style.cssText = 'background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer';
+    resetBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      delete padmapCustom[a.id];
+      localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
+      buildPadmapRows();
+    });
+    row.appendChild(lbl);
+    row.appendChild(idxSpan);
+    row.appendChild(learnBtn);
+    row.appendChild(resetBtn);
+    root.appendChild(row);
+  }
+}
+
+function padLearnPoll() {
+  if (!_learningId) return;
+  const gps = navigator.getGamepads();
+  for (const g of gps) {
+    if (!g) continue;
+    for (let i = 0; i < g.buttons.length; i++) {
+      const wasPressed = _learnPrevBtns && _learnPrevBtns[i];
+      const nowPressed = g.buttons[i].pressed || g.buttons[i].value > 0.5;
+      if (!wasPressed && nowPressed) {
+        padmapCustom[_learningId] = i;
+        localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
+        _learningId = null;
+        _learnPrevBtns = null;
+        buildPadmapRows();
+        return;
+      }
+    }
+    _learnPrevBtns = g.buttons.map(b => b.pressed);
+    return;
+  }
+}
+
 (function(){
   const m = document.getElementById('padmap-modal');
-  const close = () => m.classList.add('hidden');
+  const close = () => { m.classList.add('hidden'); _learningId = null; };
   document.getElementById('padmap-close').addEventListener('click', e => { e.stopPropagation(); close(); });
-  m.addEventListener('click', close);  // 모달 어디든 클릭하면 닫힘
+  document.getElementById('padmap-done').addEventListener('click', e => { e.stopPropagation(); close(); });
+  document.getElementById('padmap-reset').addEventListener('click', e => {
+    e.stopPropagation();
+    padmapCustom = {};
+    localStorage.setItem('sudoku-padmap', JSON.stringify(padmapCustom));
+    buildPadmapRows();
+  });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !m.classList.contains('hidden')) close();
   });
+  // 모달 클릭은 닫지 않음 (학습 버튼 등 클릭 가능해야)
   document.addEventListener('click', e => {
     if (!m.classList.contains('hidden') && !m.contains(e.target) && e.target.getAttribute('data-act') !== 'padmap') close();
-  }, true);  // capture phase
+  }, true);
 })();
 // 메뉴 항목 마우스 클릭
 document.querySelectorAll('#menu .item:not(.sep)').forEach((el, i) => {
@@ -1186,25 +1285,20 @@ function pollGP() {
     if (gpAxisCooldown > 0) gpAxisCooldown--;
     // D-pad → 숫자 1-9 (12=up,13=down,14=left,15=right 외에 face/shoulder)
     // 0=A: 정답1칸, 1=B: 지우기, 2=X: 분석토글, 3=Y: 새문제, 4=LB: undo, 5=RB: 정답1칸
-    // 패드 매핑 자동 분기: gp.mapping === 'standard'면 Chromium 표준, 아니면 raw (8BitDo Linux js0)
-    // 표준: A=0/B=1/X=2/Y=3/LB=4/RB=5/LT=6/RT=7/SELECT=8/START=9/L3=10/R3=11
-    // raw js0: A=0/B=1/X=2/Y=3/LB=4/RB=5/SELECT=6/START=7/HOME=8/L3=9/R3=10 (LT/RT는 axes로)
+    // 패드 매핑 — 사용자 커스텀 > standard/raw 기본
     const isStd = gp.mapping === 'standard';
-    const SELECT_IDX = isStd ? 8 : 6;
-    const START_IDX  = isStd ? 9 : 7;
-    const L3_IDX     = isStd ? 10 : 9;
-    const R3_IDX     = isStd ? 11 : 10;
+    const ix = (id) => getPadIdx(id, isStd);
     const map = [
-      [0, () => menuOpen ? menuSelect() : gpAPress(), 'a'],
-      [1, () => menuOpen ? closeMenu() : eraseCell(), 'b'],
-      [2, () => { if (!menuOpen) toggleMark(); }, "x"],
-      [3, () => { if (!menuOpen) undo(); }, 'y'],
-      [4, () => { if (!menuOpen) jumpValue(-1); }, 'lb'],
-      [5, () => { if (!menuOpen) jumpValue(1); }, 'rb'],
-      [L3_IDX, () => { if (!menuOpen) toggleManual(); }, 'l3'],
-      [R3_IDX, () => { if (!menuOpen) jumpToHiddenSingle(); }, 'r3'],
-      [SELECT_IDX, () => toggleBW(), 'sel'],
-      [START_IDX, () => toggleMenu(), 'start'],
+      [ix('a'),     () => menuOpen ? menuSelect() : gpAPress(), 'a'],
+      [ix('b'),     () => menuOpen ? closeMenu() : eraseCell(), 'b'],
+      [ix('x'),     () => { if (!menuOpen) toggleMark(); }, 'x'],
+      [ix('y'),     () => { if (!menuOpen) undo(); }, 'y'],
+      [ix('lb'),    () => { if (!menuOpen) jumpValue(-1); }, 'lb'],
+      [ix('rb'),    () => { if (!menuOpen) jumpValue(1); }, 'rb'],
+      [ix('l3'),    () => { if (!menuOpen) toggleManual(); }, 'l3'],
+      [ix('r3'),    () => { if (!menuOpen) jumpToHiddenSingle(); }, 'r3'],
+      [ix('sel'),   () => toggleBW(), 'sel'],
+      [ix('start'), () => toggleMenu(), 'start'],
     ];
     // LT(6)=다운 / RT(7)=업 — 마우스 휠 효과: 9개 채워진 숫자 건너뜀 + 누르고 있으면 점진 가속
     // 빈 셀에서만 (given/player에 셀 있으면 그래도 활성숫자만 변경)
@@ -1257,6 +1351,7 @@ function pollGP() {
   }
 }
 setInterval(pollGP, 50);
+setInterval(padLearnPoll, 80);
 
 // Buttons
 document.getElementById('btn-easy').addEventListener('click', () => newGame(42));
