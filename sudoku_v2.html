@@ -752,16 +752,33 @@ function numpadClick(n) {
 }
 
 // 같은 숫자 셀 중 (선택 셀에서) 가장 가까운 곳으로 selRow/selCol 점프
+// 한눈에 보이는 "마지막 빈 칸" — row/col/box 중 빈 셀이 1개인 곳 (풀이 X, 즉시 식별)
+function isLastEmptyInUnit(r, c) {
+  if (board[r][c] || given[r][c]) return false;
+  var rowEmpty = 0;
+  for (var cc = 0; cc < 9; cc++) if (!board[r][cc]) rowEmpty++;
+  if (rowEmpty === 1) return true;
+  var colEmpty = 0;
+  for (var rr = 0; rr < 9; rr++) if (!board[rr][c]) colEmpty++;
+  if (colEmpty === 1) return true;
+  var br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  var boxEmpty = 0;
+  for (var rr2 = br; rr2 < br+3; rr2++)
+    for (var cc2 = bc; cc2 < bc+3; cc2++)
+      if (!board[rr2][cc2]) boxEmpty++;
+  return boxEmpty === 1;
+}
+
 function jumpToHiddenSingle() {
-  // 현재 activeNumber의 hidden single 셀 전체 수집 → 현재 위치 다음 셀로 순환
-  // 1개면 거기만, 2개+면 누를 때마다 순환, 없으면 이동 X
+  // 진짜 마지막 빈 칸 (row/col/box 중 빈 칸 1개) + activeNumber 정답 셀만 점프
+  // 풀이/카운팅 필요한 hidden single은 제외 (사용자 의도: 너무 쉬워짐 방지)
   if (activeNumber === 0) return;
   var cells = [];
   for (var r = 0; r < 9; r++)
     for (var c = 0; c < 9; c++)
-      if (!board[r][c] && !given[r][c] && canPlaceActive(r, c) && isActiveHiddenSingle(r, c))
+      if (isLastEmptyInUnit(r, c) && canPlaceActive(r, c))
         cells.push([r, c]);
-  if (cells.length === 0) return;  // activeNumber의 확정 정답 없으면 이동 X
+  if (cells.length === 0) return;
   var idx = -1;
   for (var i = 0; i < cells.length; i++)
     if (cells[i][0] === selRow && cells[i][1] === selCol) { idx = i; break; }
