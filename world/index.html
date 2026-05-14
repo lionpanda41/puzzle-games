@@ -5,38 +5,61 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>청산대천(靑山大天) — 한국풍 판타지 세계</title>
+<title>에스카르타 대륙 — 판타지 세계관</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#1a1612;color:#e2d5b8;font-family:'Noto Serif KR','Georgia',serif;line-height:1.7;min-height:100vh}
-.container{max-width:980px;margin:0 auto;padding:40px 20px}
-header{text-align:center;padding:60px 20px;background:linear-gradient(180deg,#2d2620 0%,#1a1612 100%);border-bottom:2px solid #fbbf24}
-h1{font-size:48px;color:#fbbf24;letter-spacing:8px;margin-bottom:16px}
-.subtitle{color:#a89878;font-size:14px;letter-spacing:4px}
-nav{display:flex;gap:18px;justify-content:center;padding:18px 0;background:#0f0d09;border-bottom:1px solid #3a2f25}
+body{background:radial-gradient(ellipse at top,#2d2620 0%,#1a1612 60%,#0a0805 100%);color:#e2d5b8;font-family:'Noto Serif KR','Georgia',serif;line-height:1.7;min-height:100vh}
+.container{max-width:1100px;margin:0 auto;padding:40px 20px}
+header{text-align:center;padding:60px 20px;background:linear-gradient(180deg,#2d2620 0%,#1a1612 100%);border-bottom:2px solid #fbbf24;position:relative;overflow:hidden}
+header::before{content:'';position:absolute;inset:0;background:url('characters/01_hanyujin.png?v=2') center/cover;opacity:0.08;pointer-events:none}
+h1{font-size:54px;color:#fbbf24;letter-spacing:10px;margin-bottom:12px;text-shadow:0 0 30px rgba(251,191,36,0.4);position:relative}
+.subtitle{color:#a89878;font-size:14px;letter-spacing:5px;position:relative}
+nav{display:flex;gap:14px;justify-content:center;padding:18px 0;background:#0f0d09;border-bottom:1px solid #3a2f25;position:sticky;top:0;z-index:20;flex-wrap:wrap}
 nav a{color:#e2d5b8;text-decoration:none;padding:8px 18px;border:1px solid #3a2f25;border-radius:4px;transition:all 0.2s;font-size:13px}
 nav a:hover{background:#fbbf24;color:#1a1612;border-color:#fbbf24}
-h2{color:#fbbf24;font-size:24px;margin:40px 0 16px;border-left:4px solid #fbbf24;padding-left:14px}
+h2{color:#fbbf24;font-size:26px;margin:48px 0 18px;border-left:4px solid #fbbf24;padding-left:14px;letter-spacing:1px}
 h3{color:#d4a857;font-size:18px;margin:24px 0 10px}
-.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-top:24px}
-.card{background:#2d2620;border:1px solid #3a2f25;border-radius:6px;padding:18px;cursor:pointer;transition:all 0.2s}
-.card:hover{border-color:#fbbf24;transform:translateY(-2px)}
-.card h4{color:#fbbf24;margin-bottom:6px}
-.card .meta{font-size:11px;color:#a89878;margin-bottom:8px}
-.card .desc{font-size:12px;line-height:1.5}
-.game-tile{display:flex;align-items:center;gap:14px;background:#2d2620;border:1px solid #3a2f25;border-radius:6px;padding:14px 18px;color:#e2d5b8;text-decoration:none;transition:all 0.2s}
-.game-tile:hover{border-color:#fbbf24;background:#3a2f25}
-.game-tile .icon{font-size:32px}
-.game-tile .title{font-weight:bold;color:#fbbf24}
-.game-tile .sub{font-size:11px;color:#a89878}
-.placeholder{padding:24px;background:#0f0d09;border:1px dashed #3a2f25;border-radius:6px;color:#7a6a55;font-style:italic;text-align:center}
-footer{text-align:center;padding:30px;color:#7a6a55;font-size:11px;border-top:1px solid #3a2f25;margin-top:60px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px;margin-top:24px}
+.card{background:linear-gradient(180deg,#2d2620,#1a1612);border:1px solid #3a2f25;border-radius:8px;padding:0;overflow:hidden;cursor:default;transition:all 0.25s}
+.card:hover{border-color:#fbbf24;transform:translateY(-4px);box-shadow:0 8px 24px rgba(251,191,36,0.15)}
+.card-img{position:relative;height:280px;overflow:hidden;background:#0f0d09}
+.card-img img{width:100%;height:100%;object-fit:cover;object-position:top}
+.card-img .badge{position:absolute;bottom:8px;left:8px;background:rgba(15,13,9,0.85);border:1px solid #d4a857;color:#fbbf24;font-size:11px;padding:4px 10px;border-radius:4px;letter-spacing:1px}
+.card-body{padding:14px}
+.card-body h4{color:#fbbf24;font-size:18px;margin-bottom:4px}
+.card-body .meta{font-size:11px;color:#a89878;margin-bottom:10px;letter-spacing:0.5px}
+.card-body .row{font-size:12px;line-height:1.55;margin:5px 0}
+.card-body .row b{color:#d4a857;display:inline-block;min-width:38px}
+.card-body .quote{margin-top:10px;padding-top:10px;border-top:1px solid #3a2f25;font-style:italic;color:#a89878;font-size:11px;line-height:1.6}
+.card-body .cardstat{margin-top:8px;padding:8px;background:#0f0d09;border-radius:4px;border:1px solid #3a2f25;font-size:11px;color:#88c0d0}
+
+.game-tile{display:flex;align-items:center;gap:14px;background:linear-gradient(180deg,#2d2620,#1a1612);border:1px solid #3a2f25;border-radius:8px;padding:18px;color:#e2d5b8;text-decoration:none;transition:all 0.2s}
+.game-tile:hover{border-color:#fbbf24;background:#3a2f25;transform:translateY(-2px)}
+.game-tile.disabled{opacity:0.5;cursor:not-allowed}
+.game-tile .icon{font-size:36px}
+.game-tile .title{font-weight:bold;color:#fbbf24;font-size:15px}
+.game-tile .sub{font-size:11px;color:#a89878;margin-top:2px}
+
+.world-content p{margin:0 0 12px}
+.world-content h3{color:#fbbf24;margin:28px 0 10px;font-size:18px;border-bottom:1px solid #3a2f25;padding-bottom:6px}
+
+.episode-card{padding:22px;background:rgba(15,13,9,0.7);border:1px solid #3a2f25;border-radius:8px;line-height:1.9;margin-top:24px}
+.episode-card h3{color:#fbbf24;border:0;margin:0 0 16px;font-size:20px}
+.episode-card p{margin-bottom:12px}
+
+.syno-line{padding:8px 14px;border-bottom:1px solid #3a2f25;font-size:14px}
+.syno-line:last-child{border:0}
+.syno-line .num{color:#fbbf24;margin-right:8px;font-weight:bold}
+
+footer{text-align:center;padding:50px 20px 30px;color:#a89878;font-size:12px;border-top:1px solid #3a2f25;margin-top:60px}
+
+.placeholder{padding:40px;text-align:center;color:#a89878;font-style:italic}
 </style>
 </head>
 <body>
 <header>
-  <h1>청산대천</h1>
-  <div class="subtitle">靑 山 大 天</div>
+  <h1>에스카르타</h1>
+  <div class="subtitle">E S C A R T A · 大陸</div>
 </header>
 <nav>
   <a href="#world">세계관</a>
@@ -48,102 +71,132 @@ footer{text-align:center;padding:30px;color:#7a6a55;font-size:11px;border-top:1p
 <div class="container">
   <section id="world">
     <h2>세계관</h2>
-    <div id="world-content" class="placeholder">세계관 로딩 중... (MSI 생성)</div>
+    <div id="world-content" class="world-content placeholder">세계관 로딩...</div>
   </section>
 
   <section id="characters">
-    <h2>인물</h2>
+    <h2>인물 — 10인의 영웅과 적</h2>
     <div id="char-grid" class="card-grid">
-      <div class="placeholder" style="grid-column:1/-1">캐릭터 로딩 중... (MSI 생성)</div>
+      <div class="placeholder" style="grid-column:1/-1">캐릭터 로딩...</div>
     </div>
   </section>
 
   <section id="games">
     <h2>게임</h2>
     <div class="card-grid">
-      <a class="game-tile" href="/puzzle-games/sudoku_v2.html">
-        <div class="icon">🧩</div>
-        <div><div class="title">청산 스도쿠</div><div class="sub">패드/키마/터치 + 색상 힌트</div></div>
-      </a>
-      <a class="game-tile" href="/puzzle-games/minesweeper.html">
-        <div class="icon">💣</div>
-        <div><div class="title">청산 지뢰밭</div><div class="sub">5단계 위험도 + 안전셀</div></div>
-      </a>
-      <div class="game-tile" style="opacity:0.5">
-        <div class="icon">🃏</div>
-        <div><div class="title">청산 화투 <small>(준비중)</small></div><div class="sub">캐릭터 카드 적용</div></div>
-      </div>
-      <div class="game-tile" style="opacity:0.5">
+      <a class="game-tile" href="/cardbattle.html">
         <div class="icon">⚔️</div>
-        <div><div class="title">청산 카드 배틀 <small>(준비중)</small></div><div class="sub">하스스톤 짭 + 사기방지 카드</div></div>
-      </div>
-      <div class="game-tile" style="opacity:0.5">
+        <div><div class="title">에스카르타 카드 배틀</div><div class="sub">하스스톤 풍 · 영웅 10인 + 일반 20장</div></div>
+      </a>
+      <a class="game-tile" href="/gostop.html">
+        <div class="icon">🎴</div>
+        <div><div class="title">에스카르타 고스톱</div><div class="sub">한국 화투 · 단순 매칭</div></div>
+      </a>
+      <a class="game-tile" href="/yutnori.html">
+        <div class="icon">🎲</div>
+        <div><div class="title">에스카르타 윷놀이</div><div class="sub">2인 보드 · 한국 전통</div></div>
+      </a>
+      <a class="game-tile" href="/sudoku_v2.html">
+        <div class="icon">🧩</div>
+        <div><div class="title">스도쿠 v74</div><div class="sub">패드/키마/터치 + 색상 힌트</div></div>
+      </a>
+      <a class="game-tile" href="/minesweeper.html">
+        <div class="icon">💣</div>
+        <div><div class="title">지뢰밭</div><div class="sub">5단계 위험도 + 안전셀</div></div>
+      </a>
+      <a class="game-tile" href="/nonogram_v2.html">
         <div class="icon">▦</div>
-        <div><div class="title">청산 네모로직 <small>(준비중)</small></div></div>
-      </div>
+        <div><div class="title">네모로직</div></div>
+      </a>
     </div>
   </section>
 
   <section id="novel">
-    <h2>소설 — 청산대천 25화</h2>
-    <div id="novel-list" class="placeholder">소설 1편 작성 중... (MSI 생성)</div>
+    <h2>소설 — 에스카르타 25화 (연재 중)</h2>
+    <div id="syno-block" class="placeholder">시놉시스 로딩...</div>
+    <div id="ep-list"></div>
   </section>
 </div>
 
 <footer>
-  청산대천 · 한국풍 판타지 · 무료 제작 · powered by gouni44
+  에스카르타 대륙 · 한국 판타지 · powered by gouni44 · Cloudflare Pages
 </footer>
 
 <script>
-// 데이터 로드 (MSI 생성 후 JSON 또는 텍스트로 채워짐)
-fetch('world.txt?t='+Date.now()).then(r => r.ok ? r.text() : null).then(t => {
-  if (t) {
-    const html = t.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
-      if (l.startsWith('**') && l.endsWith('**')) return '<h3>' + l.slice(2,-2) + '</h3>';
-      if (l.startsWith('**')) return '<p>' + l.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#fbbf24">$1</strong>') + '</p>';
-      return '<p>' + l + '</p>';
-    }).join('');
-    document.getElementById('world-content').innerHTML = html;
-    document.getElementById('world-content').className = '';
-  }
-}).catch(() => {});
+const V = '?v=' + Date.now();
 
-fetch('characters.json?t='+Date.now()).then(r => r.ok ? r.json() : null).then(arr => {
-  if (!arr) return;
+// 캐릭터 ID 매핑 (한글 → 영문 카드 id)
+const CHAR_ID = {
+  '한유진':'01_hanyujin','루나리아':'02_lunaria','가르드린':'03_gardrin',
+  '라이언':'04_lion','레이븐':'05_raven','케이시':'06_kacy',
+  '닐라스':'07_nilas','블랙마크':'08_blackmark','올드 레이븐':'09_old_raven','아나리':'10_anari'
+};
+
+// 세계관
+fetch('world.txt'+V).then(r => r.text()).then(t => {
+  const lines = t.split('\n').map(l => l.trim());
+  let html = '';
+  for (const l of lines) {
+    if (!l) continue;
+    if (l === '---') { html += '<hr style="border-color:#3a2f25;margin:20px 0">'; continue; }
+    if (/^\*\*[^*]+\*\*$/.test(l)) { html += '<h3>' + l.slice(2,-2) + '</h3>'; continue; }
+    html += '<p>' + l.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#fbbf24">$1</strong>') + '</p>';
+  }
+  document.getElementById('world-content').innerHTML = html;
+  document.getElementById('world-content').classList.remove('placeholder');
+}).catch(e => console.error(e));
+
+// 인물
+fetch('characters.json'+V).then(r => r.json()).then(arr => {
   const grid = document.getElementById('char-grid');
   grid.innerHTML = '';
   for (const c of arr) {
+    const cardId = CHAR_ID[c.name] || '';
+    const imgPath = cardId ? `../cards/${cardId}.png` : `characters/${c.name}.png`;
     const el = document.createElement('div');
     el.className = 'card';
-    const baseName = c.name.split('(')[0].trim();
     el.innerHTML = `
-      <div style="text-align:center;margin-bottom:10px"><img src="characters/${baseName}.png" alt="${baseName}" style="width:140px;height:140px;object-fit:contain;border-radius:6px;background:#0f0d09" onerror="this.style.display='none'"></div>
-      <h4>${c.name} <small style="color:#a89878;font-weight:normal">${c.hanja || ''}</small></h4>
-      <div class="meta">${c.job || ''} · ${c.faction || ''}</div>
-      <div class="desc">
-        <div><strong style="color:#d4a857">성격</strong> ${c.personality || ''}</div>
-        <div style="margin-top:6px"><strong style="color:#d4a857">능력</strong> ${c.ability || ''}</div>
-        <div style="margin-top:6px"><strong style="color:#d4a857">카드</strong> ${c.card || ''}</div>
-        ${c.antifraud && c.antifraud !== '없음' ? '<div style="margin-top:6px;color:#fbbf24">🛡️ '+c.antifraud+'</div>' : ''}
-        <div style="margin-top:8px;font-style:italic;color:#a89878;font-size:11px">"${c.quote || ''}"</div>
+      <div class="card-img">
+        <img src="${imgPath}" alt="${c.name}" onerror="this.parentElement.style.display='none'">
+        <div class="badge">${c.race || ''}</div>
+      </div>
+      <div class="card-body">
+        <h4>${c.name}</h4>
+        <div class="meta">${c.job || ''}</div>
+        <div class="row"><b>외형</b> ${c.appearance || ''}</div>
+        <div class="row"><b>성격</b> ${c.personality || ''}</div>
+        <div class="row"><b>능력</b> ${c.ability || ''}</div>
+        ${c.card ? `<div class="cardstat">🃏 ${c.card}</div>` : ''}
+        ${c.quote ? `<div class="quote">"${c.quote}"</div>` : ''}
       </div>`;
     grid.appendChild(el);
   }
-}).catch(() => {});
-fetch('synopsis.txt?t='+Date.now()).then(r => r.ok ? r.text() : null).then(t => {
-  if (!t) return;
+}).catch(e => console.error(e));
+
+// 시놉시스 + 에피소드
+fetch('synopsis.txt'+V).then(r => r.text()).then(t => {
   const lines = t.split('\n').filter(l => /^\s*\d+\./.test(l));
-  let inner = '<h3 style="color:#fbbf24;border:0;margin-bottom:12px">시놉시스 25화</h3>';
-  inner += lines.slice(0, 25).map(l => '<div style="padding:6px 12px;border-bottom:1px solid #3a2f25"><span style="color:#fbbf24">'+(l.match(/\d+\./)||[''])[0]+'</span> '+l.replace(/^\s*\d+\.\s*/, '').replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#d4a857">$1</strong>')+'</div>').join('');
-  inner += '<div id="ep01-body" style="margin-top:30px"></div>';
-  document.getElementById('novel-list').innerHTML = inner;
-  document.getElementById('novel-list').className = '';
-  fetch('episodes/ep01.txt?t='+Date.now()).then(r => r.ok ? r.text() : null).then(et => {
+  let inner = '<div style="background:rgba(15,13,9,0.6);border:1px solid #3a2f25;border-radius:8px;padding:18px 0;margin-bottom:20px"><h3 style="padding:0 14px 12px;border-bottom:1px solid #3a2f25;color:#fbbf24;margin:0 0 8px">📜 시놉시스 25화 요약</h3>';
+  inner += lines.slice(0, 25).map(l => {
+    const m = l.match(/^\s*(\d+)\.\s*(.*)/);
+    if (!m) return '';
+    return `<div class="syno-line"><span class="num">${m[1]}.</span>${m[2].replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#d4a857">$1</strong>')}</div>`;
+  }).join('');
+  inner += '</div>';
+  document.getElementById('syno-block').innerHTML = inner;
+  document.getElementById('syno-block').classList.remove('placeholder');
+  // ep01 + ep03 로드
+  loadEpisode('ep01', '1편 — 차원의 문');
+  loadEpisode('ep03', '3편 — 첫 동료');
+}).catch(e => console.error(e));
+
+function loadEpisode(id, title) {
+  fetch('episodes/'+id+'.txt'+V).then(r => r.ok ? r.text() : null).then(et => {
     if (!et) return;
-    const body = '<div style="padding:20px;background:#0f0d09;border:1px solid #3a2f25;border-radius:6px;line-height:1.9"><h3 style="color:#fbbf24;border:0;margin:0 0 16px">📖 1편 — 청산도에서의 첫 만남</h3>'+et.split('\n').map(p=>p.trim()?'<p style="margin-bottom:12px">'+p+'</p>':'').join('')+'</div>';
-    document.getElementById('ep01-body').innerHTML = body;
-  });
-}).catch(() => {});
+    const body = `<div class="episode-card"><h3>📖 ${title}</h3>${et.split('\n').map(p=>p.trim()?'<p>'+p+'</p>':'').join('')}</div>`;
+    document.getElementById('ep-list').insertAdjacentHTML('beforeend', body);
+  }).catch(() => {});
+}
 </script>
 </body>
 </html>

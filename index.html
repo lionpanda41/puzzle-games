@@ -2,20 +2,77 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>🧩 퍼즐</title>
+<title>에스카르타 — 게임 + 세계관</title>
 <style>
-body{background:#111827;color:#eee;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:24px;margin:0}
-h1{color:#fbbf24;font-size:32px;letter-spacing:8px}
-a{color:#60a5fa;font-size:22px;padding:16px 36px;background:#1e293b;border:2px solid #334155;border-radius:10px;text-decoration:none;min-width:240px;text-align:center;transition:all .15s}
-a:hover{background:#334155;border-color:#3b82f6;transform:scale(1.05)}
-.hint{font-size:11px;color:#475569;margin-top:20px;text-align:center;line-height:1.6}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(ellipse at top,#3a2f25 0%,#1a1612 60%,#0a0805 100%);color:#e2d5b8;font-family:'Noto Serif KR','Georgia',serif;min-height:100vh;padding:40px 20px;display:flex;flex-direction:column;align-items:center}
+h1{color:#fbbf24;font-size:42px;letter-spacing:8px;margin-bottom:8px;text-shadow:0 0 30px rgba(251,191,36,0.4)}
+.subtitle{color:#a89878;font-size:12px;letter-spacing:5px;margin-bottom:40px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;max-width:1100px;width:100%}
+a.tile{display:flex;align-items:center;gap:18px;padding:22px;background:linear-gradient(180deg,#2d2620,#1a1612);border:1px solid #3a2f25;border-radius:10px;color:#e2d5b8;text-decoration:none;transition:all 0.25s;position:relative;overflow:hidden}
+a.tile:hover{border-color:#fbbf24;transform:translateY(-4px);box-shadow:0 8px 24px rgba(251,191,36,0.2)}
+a.tile .icon{font-size:38px;flex-shrink:0}
+a.tile .title{font-weight:bold;color:#fbbf24;font-size:16px;letter-spacing:1px;margin-bottom:4px}
+a.tile .sub{font-size:11px;color:#a89878;line-height:1.4}
+a.tile.featured{grid-column:1/-1;background:linear-gradient(135deg,#3a2520,#1a1612);border-color:#d4a857}
+a.tile.featured::before{content:'';position:absolute;inset:0;background:url('cards/01_hanyujin.png?v=2') right center/auto 100% no-repeat;opacity:0.15;pointer-events:none}
+a.tile.featured .icon{font-size:54px}
+a.tile.featured .title{font-size:22px;color:#fbbf24}
+.section-title{color:#d4a857;font-size:14px;letter-spacing:3px;margin:30px 0 12px;width:100%;max-width:1100px;border-bottom:1px solid #3a2f25;padding-bottom:8px}
+footer{margin-top:60px;font-size:11px;color:#a89878;text-align:center}
 </style>
 </head>
 <body>
-<h1>🧩 PUZZLE</h1>
-<a href="sudoku_v2.html">▦ 스도쿠</a>
-<a href="nonogram_v2.html">▤ 네모네모 로직</a>
-<div class="hint">단축키 도움말은 각 게임 안 ? 버튼 / 패드 지원 / 모바일 OK</div>
+<h1>에스카르타</h1>
+<div class="subtitle">E S C A R T A · 大陸</div>
+
+<div class="grid">
+  <a class="tile featured" href="world/">
+    <div class="icon">🌍</div>
+    <div><div class="title">세계관 + 인물 + 소설</div><div class="sub">에스카르타 대륙 · 3국 대립 · 한유진 차원이동 먼치킨 · 25화 시놉시스 + 본편</div></div>
+  </a>
+</div>
+
+<div class="section-title">⚔ 카드 게임</div>
+<div class="grid">
+  <a class="tile" href="cardbattle.html">
+    <div class="icon">🃏</div>
+    <div><div class="title">에스카르타 카드 배틀</div><div class="sub">하스스톤 풍 · 영웅 10인 + 일반 미니언 15 + 주문 5</div></div>
+  </a>
+</div>
+
+<div class="section-title">🎴 한국 전통</div>
+<div class="grid">
+  <a class="tile" href="gostop.html">
+    <div class="icon">🎴</div>
+    <div><div class="title">고스톱 (화투 메모리)</div><div class="sub">12개월 화투 짝맞추기 · 24장</div></div>
+  </a>
+  <a class="tile" href="yutnori.html">
+    <div class="icon">🎲</div>
+    <div><div class="title">윷놀이</div><div class="sub">2인 · 도/개/걸/윷/모 · vs AI</div></div>
+  </a>
+</div>
+
+<div class="section-title">🧩 퍼즐</div>
+<div class="grid">
+  <a class="tile" href="sudoku_v2.html">
+    <div class="icon">▦</div>
+    <div><div class="title">스도쿠 v74</div><div class="sub">패드/키마/터치 · 색상 힌트 + 정답셀 점프</div></div>
+  </a>
+  <a class="tile" href="minesweeper.html">
+    <div class="icon">💣</div>
+    <div><div class="title">지뢰밭</div><div class="sub">5단계 위험도 + 안전셀 · 우클릭 chord</div></div>
+  </a>
+  <a class="tile" href="nonogram_v2.html">
+    <div class="icon">▤</div>
+    <div><div class="title">네모로직</div><div class="sub">네모네모 로직</div></div>
+  </a>
+</div>
+
+<footer>
+  에스카르타 · powered by gouni44 · Cloudflare Pages
+</footer>
 </body>
 </html>

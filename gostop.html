@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>에스카르타 고스톱 — 화투 메모리</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(ellipse at center,#3a2f25 0%,#1a1612 60%,#0a0805 100%);color:#e2d5b8;font-family:'Noto Serif KR',serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px;user-select:none}
+header{display:flex;justify-content:space-between;width:100%;max-width:900px;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #fbbf24}
+h1{color:#fbbf24;font-size:24px;letter-spacing:3px}
+.status{display:flex;gap:18px;font-size:14px}
+.status span b{color:#fbbf24}
+.controls button{background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:8px 14px;border-radius:5px;cursor:pointer;font-size:13px;margin-left:6px}
+.controls button:hover{background:#fbbf24;color:#1a1612}
+
+#board{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;max-width:900px;width:100%;perspective:1000px}
+.card{aspect-ratio:5/8;background:transparent;cursor:pointer;transform-style:preserve-3d;transition:transform 0.5s;position:relative}
+.card.flipped{transform:rotateY(180deg)}
+.card.matched{transform:rotateY(180deg);pointer-events:none;animation:matched 0.5s}
+@keyframes matched{0%{box-shadow:0 0 0 0 #fbbf24}50%{box-shadow:0 0 30px 8px #fbbf24}100%{box-shadow:0 0 0 0 transparent}}
+.face{position:absolute;inset:0;backface-visibility:hidden;border-radius:6px;border:2px solid #5a4030;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px;overflow:hidden}
+.back{background:linear-gradient(135deg,#5a2030 0%,#3a1020 100%);border-color:#bf616a}
+.back::before{content:'화';font-size:32px;color:#fbbf24;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:serif}
+.front{transform:rotateY(180deg);background:linear-gradient(180deg,#fdf4dc,#e8d499);color:#1a1612;border-color:#d4a857}
+.front .month{font-size:22px;font-weight:bold;color:#5a2010;letter-spacing:1px}
+.front .icon{font-size:42px;flex:1;display:flex;align-items:center;justify-content:center}
+.front .name{font-size:9px;color:#5a4030;text-align:center;line-height:1.2}
+.card.matched .front{background:linear-gradient(180deg,#d4a857,#a87830);color:#fff}
+.card.matched .front .name{color:#fff}
+.card.matched .front .month{color:#fff;text-shadow:0 0 8px #fbbf24}
+
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:18px;color:#fbbf24;font-size:28px}
+#overlay.show{display:flex}
+#overlay button{background:#1d4ed8;color:#fff;border:0;padding:12px 24px;border-radius:5px;cursor:pointer;font-size:15px}
+
+@media (max-width:768px){
+  #board{grid-template-columns:repeat(6,1fr)}
+  .front .month{font-size:18px}
+  .front .icon{font-size:32px}
+  .front .name{font-size:8px}
+  .back::before{font-size:24px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎴 에스카르타 고스톱</h1>
+  <div class="status">
+    <span>매치 <b id="matched">0</b>/24</span>
+    <span>시도 <b id="moves">0</b></span>
+    <span>점수 <b id="score">0</b></span>
+  </div>
+  <div class="controls">
+    <button id="btn-new">새 게임</button>
+  </div>
+</header>
+
+<div id="board"></div>
+
+<div id="overlay">
+  <div id="overlay-msg"></div>
+  <button id="overlay-btn">다시</button>
+</div>
+
+<script>
+// 화투 12월 + 대표 아이콘/이름
+const HWATU = [
+  {m:1,  icon:'🌸', name:'송학'},
+  {m:2,  icon:'🌺', name:'매조'},
+  {m:3,  icon:'🌸', name:'벚꽃'},
+  {m:4,  icon:'🌿', name:'흑싸리'},
+  {m:5,  icon:'🌷', name:'난초'},
+  {m:6,  icon:'🌼', name:'목단'},
+  {m:7,  icon:'🍂', name:'홍싸리'},
+  {m:8,  icon:'🌕', name:'공산'},
+  {m:9,  icon:'🍶', name:'국화'},
+  {m:10, icon:'🍁', name:'단풍'},
+  {m:11, icon:'☔', name:'오동'},
+  {m:12, icon:'⚡', name:'비'},
+];
+
+let state = null;
+
+function newGame() {
+  // 12월 × 2장 = 24장
+  const deck = [];
+  for (const c of HWATU) { deck.push({...c}); deck.push({...c}); }
+  // 셔플
+  for (let i = deck.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  state = {
+    deck, flipped: [], matched: 0, moves: 0, score: 0, locked: false
+  };
+  render();
+}
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  state.deck.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    if (c.matched) div.classList.add('matched');
+    else if (state.flipped.includes(i)) div.classList.add('flipped');
+    div.innerHTML = `
+      <div class="face back"></div>
+      <div class="face front">
+        <div class="month">${c.m}월</div>
+        <div class="icon">${c.icon}</div>
+        <div class="name">${c.name}</div>
+      </div>`;
+    div.addEventListener('click', () => onFlip(i));
+    board.appendChild(div);
+  });
+  document.getElementById('matched').textContent = state.matched;
+  document.getElementById('moves').textContent = state.moves;
+  document.getElementById('score').textContent = state.score;
+}
+
+function onFlip(idx) {
+  if (state.locked) return;
+  const c = state.deck[idx];
+  if (c.matched || state.flipped.includes(idx)) return;
+  state.flipped.push(idx);
+  render();
+  if (state.flipped.length === 2) {
+    state.moves++;
+    state.locked = true;
+    const [a, b] = state.flipped;
+    const ca = state.deck[a], cb = state.deck[b];
+    if (ca.m === cb.m) {
+      // 매치
+      setTimeout(() => {
+        ca.matched = true; cb.matched = true;
+        state.matched++;
+        state.score += Math.max(100 - state.moves*2, 20);
+        state.flipped = [];
+        state.locked = false;
+        render();
+        if (state.matched === 12) gameOver();
+      }, 500);
+    } else {
+      setTimeout(() => {
+        state.flipped = [];
+        state.locked = false;
+        render();
+      }, 900);
+    }
+  }
+}
+
+function gameOver() {
+  const msg = `🎉 완성!\n${state.moves}회 시도\n점수 ${state.score}`;
+  document.getElementById('overlay-msg').innerText = msg;
+  document.getElementById('overlay').classList.add('show');
+}
+
+document.getElementById('btn-new').addEventListener('click', newGame);
+document.getElementById('overlay-btn').addEventListener('click', () => {
+  document.getElementById('overlay').classList.remove('show');
+  newGame();
+});
+
+newGame();
+</script>
+</body>
+</html>

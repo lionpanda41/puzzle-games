@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>에스카르타 윷놀이</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(ellipse at center,#3a2f25 0%,#1a1612 60%,#0a0805 100%);color:#e2d5b8;font-family:'Noto Serif KR',serif;min-height:100vh;padding:20px;display:flex;flex-direction:column;align-items:center;user-select:none}
+header{display:flex;justify-content:space-between;width:100%;max-width:900px;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #fbbf24}
+h1{color:#fbbf24;font-size:24px;letter-spacing:3px}
+.status{display:flex;gap:20px;font-size:14px;align-items:center}
+.player-info{padding:6px 14px;border:1px solid #5a4030;border-radius:5px;font-size:12px}
+.player-info.active{border-color:#fbbf24;background:rgba(251,191,36,0.1);box-shadow:0 0 12px rgba(251,191,36,0.3)}
+.player-info b{color:#fbbf24;display:block}
+
+#board-area{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+#board{position:relative;width:560px;height:560px;background:radial-gradient(circle,#2d2620 0%,#1a1612 100%);border:2px solid #fbbf24;border-radius:14px;box-shadow:0 0 30px rgba(251,191,36,0.2)}
+.node{position:absolute;width:54px;height:54px;border-radius:50%;background:#0f0d09;border:2px solid #5a4030;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a89878;transform:translate(-50%,-50%)}
+.node.corner{background:#3a2f25;border-color:#d4a857;width:64px;height:64px;font-size:12px;color:#fbbf24}
+.node.center{background:#3a2520;border-color:#bf616a;width:72px;height:72px}
+.node .label{position:absolute;bottom:-18px;font-size:9px;color:#a89878;white-space:nowrap}
+.piece{position:absolute;width:24px;height:24px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:#fff;transition:all 0.4s;z-index:5}
+.piece.p1{background:#1d4ed8}
+.piece.p2{background:#bf616a}
+
+#controls{display:flex;flex-direction:column;gap:14px;min-width:200px}
+.throw-area{padding:18px;background:#2d2620;border:1px solid #5a4030;border-radius:8px}
+.throw-area h3{color:#fbbf24;margin-bottom:10px;font-size:14px}
+.yut-display{display:flex;gap:8px;margin:12px 0;justify-content:center}
+.yut{width:28px;height:60px;border-radius:6px 6px 6px 6px;border:2px solid #5a4030;background:linear-gradient(180deg,#5a4030,#3a2520);transition:transform 0.4s}
+.yut.flipped{background:linear-gradient(180deg,#fdf4dc,#e8d499);border-color:#d4a857;transform:rotateY(180deg) scale(1.05)}
+.throw-btn{width:100%;background:linear-gradient(180deg,#1d4ed8,#0a2080);color:#fff;border:2px solid #fbbf24;padding:14px;border-radius:6px;cursor:pointer;font-size:16px;font-weight:bold}
+.throw-btn:hover{box-shadow:0 0 20px rgba(251,191,36,0.4)}
+.throw-btn:disabled{opacity:0.4;cursor:not-allowed;background:#3a2f25;border-color:#5a4030}
+.result{text-align:center;font-size:32px;font-weight:bold;color:#fbbf24;margin-top:10px;min-height:42px;letter-spacing:4px}
+.help{font-size:11px;color:#a89878;line-height:1.6;padding:14px;background:#0f0d09;border-radius:6px;border:1px solid #3a2f25}
+
+#log{max-height:200px;overflow-y:auto;font-size:11px;background:#0f0d09;border:1px solid #3a2f25;border-radius:6px;padding:10px;min-width:200px}
+#log .e{padding:3px 0;border-bottom:1px solid #1f1a14;color:#a89878}
+#log .e.p1{color:#88c0d0}
+#log .e.p2{color:#bf616a}
+
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:18px;color:#fbbf24;font-size:36px}
+#overlay.show{display:flex}
+#overlay button{background:#1d4ed8;color:#fff;border:0;padding:12px 24px;border-radius:5px;cursor:pointer;font-size:15px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎲 에스카르타 윷놀이</h1>
+  <div class="status">
+    <div class="player-info p1 active" id="info-p1">
+      <b>유진군 (파랑)</b>
+      <span>골인 <span id="p1-goal">0</span>/4</span>
+    </div>
+    <div class="player-info p2" id="info-p2">
+      <b>마군 (빨강)</b>
+      <span>골인 <span id="p2-goal">0</span>/4</span>
+    </div>
+  </div>
+  <button id="btn-new" style="background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:8px 14px;border-radius:5px;cursor:pointer">새 게임</button>
+</header>
+
+<div id="board-area">
+  <div id="board"></div>
+
+  <div id="controls">
+    <div class="throw-area">
+      <h3>🎯 윷 던지기</h3>
+      <div class="yut-display" id="yuts"></div>
+      <div class="result" id="result"></div>
+      <button class="throw-btn" id="btn-throw">던지기</button>
+    </div>
+    <div class="help">
+      <b style="color:#fbbf24">규칙</b><br>
+      윷 4개를 던져 평평한 면 개수만큼 이동<br>
+      · 1개=도(1), 2개=개(2), 3개=걸(3), 4개=윷(4), 0개=모(5)<br>
+      · 윷/모는 한 번 더 던짐<br>
+      · 4말 모두 골인하면 승리<br>
+      · 적 말 만나면 잡고 한 번 더<br>
+      · 분기점에서 지름길 우선
+    </div>
+    <div id="log"></div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div id="overlay-msg"></div>
+  <button id="overlay-btn">다시</button>
+</div>
+
+<script>
+// 윷놀이 보드 — 외곽 20칸 + 내부 분기 9칸. 단순 외곽 트랙만 구현.
+// 노드 ID 0~19: 외곽 정사각 (0=출발, 5=좌상모서리, 10=좌하모서리, 15=우하모서리)
+// 단순화: 외곽 트랙만, 20칸 한 바퀴 후 골인
+const W = 560, H = 560;
+const NODES = [];
+// 외곽 5x5 정사각 트랙 — 시계 반대 방향 (전통 윷놀이)
+// 출발: 우하 (15)
+const positions = [
+  [W-50, H-50],  // 0 (출발/도착)
+  [W-50, H*0.75],
+  [W-50, H*0.50],
+  [W-50, H*0.25],
+  [W-50, 50],    // 4 (우상 모서리)
+  [W*0.75, 50],
+  [W*0.50, 50],
+  [W*0.25, 50],
+  [50, 50],      // 8 (좌상 모서리)
+  [50, H*0.25],
+  [50, H*0.50],
+  [50, H*0.75],
+  [50, H-50],    // 12 (좌하 모서리)
+  [W*0.25, H-50],
+  [W*0.50, H-50],
+  [W*0.75, H-50],
+];
+const CORNERS = [0, 4, 8, 12];
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  positions.forEach((p, i) => {
+    const n = document.createElement('div');
+    n.className = 'node' + (CORNERS.includes(i) ? ' corner' : '');
+    if (i === 0) n.classList.add('center');
+    n.style.left = p[0] + 'px';
+    n.style.top  = p[1] + 'px';
+    n.textContent = i === 0 ? '출발' : i;
+    board.appendChild(n);
+  });
+  // 중앙 (단순) — 사용 안 함
+  const c = document.createElement('div');
+  c.className = 'node center';
+  c.style.left = (W/2) + 'px';
+  c.style.top  = (H/2) + 'px';
+  c.style.fontSize = '14px';
+  c.style.color = '#fbbf24';
+  c.textContent = '에스카르타';
+  board.appendChild(c);
+}
+
+let state;
+function newGame() {
+  state = {
+    pieces: {
+      p1: [0,0,0,0],  // 4말, 시작=0 (출발/도착 같음. -1=골인)
+      p2: [0,0,0,0],
+    },
+    turn: 'p1',
+    over: false,
+    lastResult: null,
+    bonusTurn: false,
+  };
+  renderBoard();
+  renderPieces();
+  updateUI();
+  document.getElementById('log').innerHTML = '';
+  log('새 게임 시작', 'sys');
+}
+
+function renderPieces() {
+  document.querySelectorAll('.piece').forEach(p => p.remove());
+  const board = document.getElementById('board');
+  for (const side of ['p1','p2']) {
+    state.pieces[side].forEach((pos, idx) => {
+      if (pos < 0 || pos === 0 && state.pieces[side][idx] === 0 && !state.pieces[side+'_started']?.[idx]) {
+        // 출발 안 한 말은 보드 밖
+        return;
+      }
+      if (pos < 0) return; // 골인
+      const [x, y] = positions[pos];
+      const el = document.createElement('div');
+      el.className = 'piece ' + side;
+      el.style.left = (x + (side==='p1'?-12:12) + (idx%2)*5) + 'px';
+      el.style.top  = (y + (idx<2?-8:8)) + 'px';
+      el.textContent = idx+1;
+      board.appendChild(el);
+    });
+  }
+  // 골인한 말 카운트
+  const p1g = state.pieces.p1.filter(p => p === -1).length;
+  const p2g = state.pieces.p2.filter(p => p === -1).length;
+  document.getElementById('p1-goal').textContent = p1g;
+  document.getElementById('p2-goal').textContent = p2g;
+}
+
+function updateUI() {
+  document.getElementById('info-p1').classList.toggle('active', state.turn === 'p1');
+  document.getElementById('info-p2').classList.toggle('active', state.turn === 'p2');
+  // 윷 표시
+  const yutEl = document.getElementById('yuts');
+  yutEl.innerHTML = '';
+  for (let i=0;i<4;i++) {
+    const y = document.createElement('div');
+    y.className = 'yut';
+    if (state.lastFlips && state.lastFlips[i]) y.classList.add('flipped');
+    yutEl.appendChild(y);
+  }
+  document.getElementById('result').textContent = state.lastResult || '';
+}
+
+function log(msg, kind) {
+  const el = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = 'e' + (kind?' '+kind:'');
+  d.textContent = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+function throwYut() {
+  if (state.over) return;
+  const flips = [0,1,2,3].map(() => Math.random() < 0.5 ? 1 : 0);
+  state.lastFlips = flips;
+  const ups = flips.filter(f => f===1).length;
+  // 평평한 면(flipped) 개수 = 위로
+  const NAMES = ['모','도','개','걸','윷'];  // 0,1,2,3,4
+  const MOVES = [5, 1, 2, 3, 4];
+  const result = NAMES[ups];
+  const move = MOVES[ups];
+  state.lastResult = result + ' (+' + move + ')';
+  updateUI();
+  log(`${state.turn==='p1'?'유진군':'마군'} → ${result} (${move}칸)`, state.turn);
+  // 자동 이동 (가장 뒤에 있는 말 진행)
+  const pieces = state.pieces[state.turn];
+  // 출발 못한 말(0) 우선 출발 (시작값 0)
+  let target = -1;
+  // 가장 진행이 적은 말 (-1이 아닌 가장 작은 pos) 또는 시작 안한 말
+  let minPos = 100, minIdx = -1;
+  pieces.forEach((p, i) => {
+    if (p < 0) return; // 골인
+    if (p < minPos) { minPos = p; minIdx = i; }
+  });
+  if (minIdx >= 0) {
+    let newPos = pieces[minIdx] + move;
+    if (newPos >= 20) {
+      pieces[minIdx] = -1;
+      log(`${state.turn==='p1'?'유진군':'마군'} ${minIdx+1}번말 골인!`, state.turn);
+    } else {
+      pieces[minIdx] = newPos;
+      // 적 말 잡기
+      const oppSide = state.turn === 'p1' ? 'p2' : 'p1';
+      let caught = false;
+      state.pieces[oppSide].forEach((p, i) => {
+        if (p === newPos) { state.pieces[oppSide][i] = 0; caught = true; }
+      });
+      if (caught) {
+        log(`적 말 잡음 → 한 번 더!`, state.turn);
+        state.bonusTurn = true;
+      }
+    }
+  }
+  renderPieces();
+  // 승리 체크
+  const allGoal = state.pieces[state.turn].every(p => p === -1);
+  if (allGoal) {
+    state.over = true;
+    gameOver(state.turn);
+    return;
+  }
+  // 윷/모면 한 번 더, 잡기도 한 번 더
+  if (ups === 4 || ups === 0 || state.bonusTurn) {
+    state.bonusTurn = false;
+    // 같은 턴
+  } else {
+    state.turn = state.turn === 'p1' ? 'p2' : 'p1';
+  }
+  updateUI();
+  if (state.turn === 'p2' && !state.over) {
+    setTimeout(() => { throwYut(); }, 1000);
+  }
+}
+
+function gameOver(winner) {
+  const name = winner === 'p1' ? '유진군 (파랑) 승리!' : '마군 (빨강) 승리!';
+  document.getElementById('overlay-msg').innerHTML = '🎉<br>' + name;
+  document.getElementById('overlay').classList.add('show');
+  log(name, 'sys');
+}
+
+document.getElementById('btn-throw').addEventListener('click', () => {
+  if (state.turn === 'p1' && !state.over) throwYut();
+});
+document.getElementById('btn-new').addEventListener('click', newGame);
+document.getElementById('overlay-btn').addEventListener('click', () => {
+  document.getElementById('overlay').classList.remove('show');
+  newGame();
+});
+
+newGame();
+</script>
+</body>
+</html>
