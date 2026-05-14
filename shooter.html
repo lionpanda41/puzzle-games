@@ -46,6 +46,7 @@ canvas{display:block;background:linear-gradient(180deg,#0a0820 0%,#1a1612 80%,#2
 
 <div id="joystick"><div class="knob" id="knob"></div></div>
 <button id="fire-btn">FIRE</button>
+<button id="bomb-btn" style="position:fixed;right:130px;bottom:50px;width:64px;height:64px;border-radius:50%;background:rgba(170,100,200,0.4);border:3px solid #a64ac9;color:#fff;font-size:11px;font-weight:bold;z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center">💥<small style="font-size:10px" id="bomb-cnt">3</small></button>
 
 <div id="overlay" class="show">
   <h2>🧙‍♀️ 에스카르타 마녀비행</h2>
@@ -95,7 +96,7 @@ let state, keys = {}, joy = {dx:0, dy:0, active:false}, firing = false;
 function newGame() {
   document.getElementById('overlay').classList.remove('show');
   state = {
-    player: {x: W/2, y: H-100, hp: 100, maxHp: 100, r: 18, cd: 0},
+    player: {x: W/2, y: H-100, hp: 100, maxHp: 100, r: 18, cd: 0, charge: 0, bombs: 3},
     bullets: [],
     enemies: [],
     eBullets: [],
@@ -103,8 +104,10 @@ function newGame() {
     score: 0, stage: 1,
     spawnTimer: 0,
     bossActive: false,
+    bombFlash: 0,
     running: true,
   };
+  document.getElementById('bomb-cnt').textContent = state.player.bombs;
   requestAnimationFrame(tick);
 }
 
@@ -142,12 +145,32 @@ function tick() {
   state.player.x = Math.max(20, Math.min(W-20, state.player.x));
   state.player.y = Math.max(30, Math.min(H-30, state.player.y));
 
-  // 발사
-  if ((keys[' '] || firing) && state.player.cd <= 0) {
-    fire();
-    state.player.cd = picked.rate;
+  // 발사 (꾹 누르면 차지)
+  if (keys[' '] || firing) {
+    state.player.charge = Math.min(60, state.player.charge + 1);
+    if (state.player.cd <= 0) {
+      fire(false);
+      state.player.cd = picked.rate;
+    }
+  } else {
+    if (state.player.charge > 30) {
+      fire(true);  // 차지샷
+    }
+    state.player.charge = 0;
   }
   if (state.player.cd > 0) state.player.cd--;
+
+  // 봄
+  if (keys['b'] || keys['B'] || state.bombTrigger) {
+    state.bombTrigger = false; keys['b'] = false; keys['B'] = false;
+    if (state.player.bombs > 0) {
+      state.player.bombs--;
+      state.bombFlash = 30;
+      for (const e of state.enemies) e.hp -= 100;
+      state.eBullets = [];
+      document.getElementById('bomb-cnt').textContent = state.player.bombs;
+    }
+  }
 
   // 적 스폰
   state.spawnTimer++;
@@ -192,9 +215,9 @@ function tick() {
   for (const b of state.bullets) {
     for (const e of state.enemies) {
       const dx = b.x - e.x, dy = b.y - e.y;
-      if (Math.sqrt(dx*dx+dy*dy) < e.r) {
-        e.hp -= picked.dmg;
-        b.dead = true;
+      if (Math.sqrt(dx*dx+dy*dy) < e.r + (b.big > 1 ? 5 : 0)) {
+        e.hp -= picked.dmg * (b.big || 1);
+        if ((b.big || 1) <= 3) b.dead = true;
         explode(b.x, b.y, picked.col);
         if (e.hp <= 0) {
           e.dead = true;
@@ -250,16 +273,27 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
-function fire() {
+function fire(charged) {
   const p = state.player;
+  const big = charged ? 5 : 1;
   if (picked.weapon === 'arrow') {
-    state.bullets.push({x: p.x, y: p.y-20, vx: 0, vy: -10});
+    state.bullets.push({x: p.x, y: p.y-20, vx: 0, vy: -10, big});
+    if (charged) {
+      state.bullets.push({x: p.x-12, y: p.y-15, vx: -2, vy: -9, big});
+      state.bullets.push({x: p.x+12, y: p.y-15, vx: 2, vy: -9, big});
+    }
   } else if (picked.weapon === 'magic') {
-    state.bullets.push({x: p.x-8, y: p.y-15, vx: -1, vy: -9});
-    state.bullets.push({x: p.x+8, y: p.y-15, vx: 1, vy: -9});
+    state.bullets.push({x: p.x-8, y: p.y-15, vx: -1, vy: -9, big});
+    state.bullets.push({x: p.x+8, y: p.y-15, vx: 1, vy: -9, big});
+    if (charged) {
+      state.bullets.push({x: p.x, y: p.y-22, vx: 0, vy: -12, big: 8});
+    }
   } else if (picked.weapon === 'beam') {
-    state.bullets.push({x: p.x, y: p.y-20, vx: -0.5, vy: -12});
-    state.bullets.push({x: p.x, y: p.y-20, vx: 0.5, vy: -12});
+    state.bullets.push({x: p.x, y: p.y-20, vx: -0.5, vy: -12, big});
+    state.bullets.push({x: p.x, y: p.y-20, vx: 0.5, vy: -12, big});
+    if (charged) for (let i = -2; i <= 2; i++) {
+      state.bullets.push({x: p.x, y: p.y-22, vx: i*1.5, vy: -10, big});
+    }
   }
 }
 
@@ -301,9 +335,26 @@ function draw() {
     ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
   }
   // 아군탄
-  ctx.fillStyle = picked.col;
   for (const b of state.bullets) {
-    ctx.fillRect(b.x-2, b.y-8, 4, 12);
+    ctx.fillStyle = b.big > 1 ? '#fff' : picked.col;
+    const sz = b.big > 1 ? 4 + b.big : 2;
+    ctx.fillRect(b.x-sz, b.y-8-sz, sz*2, 12+sz);
+    if (b.big > 1) {
+      ctx.fillStyle = picked.col; ctx.globalAlpha = 0.5;
+      ctx.fillRect(b.x-sz-3, b.y-10-sz, sz*2+6, 14+sz);
+      ctx.globalAlpha = 1;
+    }
+  }
+  // 봄 플래시
+  if (state.bombFlash > 0) {
+    ctx.fillStyle = `rgba(255,255,200,${state.bombFlash/30 * 0.7})`;
+    ctx.fillRect(0, 0, W, H);
+    state.bombFlash--;
+  }
+  // 차지 게이지
+  if (state.player.charge > 30) {
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(state.player.x - 20, state.player.y + 22, 40 * (state.player.charge/60), 4);
   }
   // 플레이어 (캐릭터 이미지 원형 클립)
   const img = imgs[picked.id];
@@ -364,6 +415,10 @@ fb.addEventListener('touchstart', e => { firing=true; e.preventDefault(); }, {pa
 fb.addEventListener('touchend',   () => { firing=false; });
 fb.addEventListener('mousedown',  () => { firing=true; });
 fb.addEventListener('mouseup',    () => { firing=false; });
+
+const bb = document.getElementById('bomb-btn');
+bb.addEventListener('touchstart', e => { if(state) state.bombTrigger = true; e.preventDefault(); }, {passive:false});
+bb.addEventListener('click',      () => { if(state) state.bombTrigger = true; });
 
 document.getElementById('overlay-btn').addEventListener('click', newGame);
 document.getElementById('btn-new').addEventListener('click', () => location.reload());
