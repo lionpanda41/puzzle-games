@@ -85,9 +85,9 @@ header button:hover{background:#3a2f25}
   <!-- 적 -->
   <div class="side foe">
     <div class="hero" id="foe-hero">
-      <img src="world/characters/한우진.png" alt="foe">
+      <img src="world/characters/블랙마크.png" alt="foe">
       <div class="hp">❤️ <span id="foe-hp">30</span></div>
-      <button class="power" id="foe-power" disabled>구미호 술수</button>
+      <button class="power" id="foe-power" disabled>흑마법 일격</button>
     </div>
     <div class="field" id="foe-field"></div>
     <div class="deck">
@@ -100,7 +100,7 @@ header button:hover{background:#3a2f25}
   <!-- 내 -->
   <div class="side you">
     <div class="hero" id="you-hero">
-      <img src="world/characters/김진우.png" alt="you">
+      <img src="world/characters/한유진.png" alt="you">
       <div class="hp">❤️ <span id="you-hp">30</span></div>
       <div class="mana">💧 <span id="you-mana">0</span>/<span id="you-max-mana">0</span></div>
       <button class="power" id="you-power">2💧 도술의 화살 (1피해)</button>
@@ -130,41 +130,31 @@ header button:hover{background:#3a2f25}
 // ─── 카드 데이터 (하스 vanilla 짭) ─────────────────────────
 // 비용/공격/체력/효과
 const CHAR_IMG = {
-  '김진우 견습':'world/characters/김진우.png',
-  '강석현 도사':'world/characters/강석현.png',
-  '신소라 학자':'world/characters/신소라.png',
-  '한우진 구미호':'world/characters/한우진.png',
-  '이영주 무녀':'world/characters/이영주.png',
-  '차정민 반항자':'world/characters/차정민.png',
-  '김영수 판별사':'world/characters/김영수.png',
-  '도깨비 일꾼':'world/characters/도깨비일꾼.png',
-  '도깨비 전사':'world/characters/도깨비전사.png',
-  '산신':'world/characters/산신.png',
-  '어린 구미호':'world/characters/구미호병사.png',
-  '구미호 병사':'world/characters/구미호병사.png',
-  '도사 궁수':'world/characters/도사궁수.png',
-  '광대':'world/characters/광대.png',
-  '무당전사':'world/characters/무당전사.png',
-  '무당':'world/characters/무당전사.png',
-  '신선 검사':'world/characters/신선검사.png',
-  '주작 수호자':'world/characters/주작수호자.png',
-  '청룡 전사':'world/characters/청룡전사.png',
-  '백호 장군':'world/characters/백호장군.png',
+  '한유진':'world/characters/한유진.png',
+  '루나리아':'world/characters/루나리아.png',
+  '가르드린':'world/characters/가르드린.png',
+  '라이언':'world/characters/라이언.png',
+  '레이븐':'world/characters/레이븐.png',
+  '케이시':'world/characters/케이시.png',
+  '닐라스':'world/characters/닐라스.png',
+  '블랙마크':'world/characters/블랙마크.png',
+  '올드 레이븐':'world/characters/올드_레이븐.png',
+  '아나리':'world/characters/아나리.png',
 };
 const CARDS = [
   // 미니언
-  {id:'kim',     name:'김진우 견습',   type:'minion', cost:2, atk:2, hp:3, text:'1턴 후 공격력 +1', effect:'growth'},
-  {id:'kang',    name:'강석현 도사',   type:'minion', cost:5, atk:5, hp:5, text:'전투의 함성: 영웅 4 회복', effect:'battlecry_heal4'},
-  {id:'sora',    name:'신소라 학자',   type:'minion', cost:4, atk:3, hp:6, text:'도발', effect:'taunt'},
-  {id:'han',     name:'한우진 구미호', type:'minion', cost:5, atk:4, hp:5, text:'은신', effect:'stealth'},
-  {id:'young',   name:'이영주 무녀',   type:'minion', cost:3, atk:2, hp:4, text:'전투의 함성: 카드 1장 드로우', effect:'battlecry_draw'},
-  {id:'cha',     name:'차정민 반항자', type:'minion', cost:2, atk:3, hp:2, text:'돌진', effect:'charge'},
-  {id:'soo',     name:'김영수 판별사', type:'minion', cost:4, atk:3, hp:5, text:'적 비밀/은신 무효 (사기방지)', effect:'antifraud'},
-  {id:'imp',     name:'도깨비 일꾼',   type:'minion', cost:1, atk:1, hp:1, text:'',                    effect:''},
-  {id:'sansin',  name:'산신',          type:'minion', cost:4, atk:4, hp:5, text:'도발',                effect:'taunt'},
-  {id:'gumiho1', name:'어린 구미호',   type:'minion', cost:3, atk:3, hp:3, text:'',                    effect:''},
-  {id:'goblin',  name:'도깨비 전사',   type:'minion', cost:2, atk:2, hp:2, text:'',                    effect:''},
-  {id:'priest',  name:'무당',          type:'minion', cost:3, atk:1, hp:4, text:'전투의 함성: 영웅 2 회복', effect:'battlecry_heal2'},
+  {id:'kim',     name:'한유진',   type:'minion', cost:2, atk:2, hp:3, text:'1턴 후 공격력 +1', effect:'growth'},
+  {id:'kang',    name:'레이븐',   type:'minion', cost:5, atk:5, hp:5, text:'전투의 함성: 영웅 4 회복', effect:'battlecry_heal4'},
+  {id:'sora',    name:'루나리아',   type:'minion', cost:4, atk:3, hp:6, text:'도발', effect:'taunt'},
+  {id:'han',     name:'케이시', type:'minion', cost:5, atk:4, hp:5, text:'은신', effect:'stealth'},
+  {id:'young',   name:'닐라스',   type:'minion', cost:3, atk:2, hp:4, text:'전투의 함성: 카드 1장 드로우', effect:'battlecry_draw'},
+  {id:'cha',     name:'가르드린', type:'minion', cost:2, atk:3, hp:2, text:'돌진', effect:'charge'},
+  {id:'soo',     name:'아나리', type:'minion', cost:4, atk:3, hp:5, text:'적 비밀/은신 무효 (사기방지)', effect:'antifraud'},
+  {id:'imp',     name:'블랙마크 하수인',   type:'minion', cost:1, atk:1, hp:1, text:'',                    effect:''},
+  {id:'sansin',  name:'올드 레이븐',          type:'minion', cost:4, atk:4, hp:5, text:'도발',                effect:'taunt'},
+  {id:'gumiho1', name:'엘프 정찰병',   type:'minion', cost:3, atk:3, hp:3, text:'',                    effect:''},
+  {id:'goblin',  name:'오크 전사',   type:'minion', cost:2, atk:2, hp:2, text:'',                    effect:''},
+  {id:'priest',  name:'마법사 견습',          type:'minion', cost:3, atk:1, hp:4, text:'전투의 함성: 영웅 2 회복', effect:'battlecry_heal2'},
   // 주문
   {id:'arrow',   name:'도술 화살',     type:'spell',  cost:1, text:'대상에 1피해',            effect:'dmg1'},
   {id:'fireball',name:'화염구',        type:'spell',  cost:4, text:'대상에 6피해',            effect:'dmg6'},
@@ -173,14 +163,14 @@ const CARDS = [
   {id:'polymorph',name:'변신',         type:'spell',  cost:4, text:'대상 미니언을 1/1로',     effect:'poly'},
   {id:'buff',    name:'음양 가호',     type:'spell',  cost:2, text:'대상 미니언 +2/+2',       effect:'buff22'},
   // 추가 미니언 (WoW 스타일 캐릭터)
-  {id:'gum',     name:'구미호 병사',   type:'minion', cost:4, atk:4, hp:4, text:'은신',                effect:'stealth'},
-  {id:'arch',    name:'도사 궁수',     type:'minion', cost:3, atk:3, hp:2, text:'전투의 함성: 적 미니언 2피해', effect:'battlecry_zap'},
-  {id:'kwd',     name:'광대',          type:'minion', cost:3, atk:2, hp:3, text:'적 영웅 능력 비용 +1', effect:''},
-  {id:'shawar',  name:'무당전사',      type:'minion', cost:4, atk:3, hp:4, text:'전투의 함성: 영웅 3 회복', effect:'battlecry_heal3'},
-  {id:'imm',     name:'신선 검사',     type:'minion', cost:6, atk:6, hp:6, text:'돌진',                effect:'charge'},
-  {id:'pho',     name:'주작 수호자',   type:'minion', cost:5, atk:5, hp:4, text:'전투의 함성: 적 모두 2피해', effect:'battlecry_aoe'},
-  {id:'dra',     name:'청룡 전사',     type:'minion', cost:6, atk:5, hp:7, text:'도발',                effect:'taunt'},
-  {id:'tig',     name:'백호 장군',     type:'minion', cost:7, atk:7, hp:7, text:'전투의 함성: 무작위 적 미니언 처치', effect:'battlecry_destroy'},
+  {id:'gum',     name:'엘프 정찰병',   type:'minion', cost:4, atk:4, hp:4, text:'은신',                effect:'stealth'},
+  {id:'arch',    name:'드워프 사수',     type:'minion', cost:3, atk:3, hp:2, text:'전투의 함성: 적 미니언 2피해', effect:'battlecry_zap'},
+  {id:'kwd',     name:'마계 첩자',          type:'minion', cost:3, atk:2, hp:3, text:'적 영웅 능력 비용 +1', effect:''},
+  {id:'shawar',  name:'마법사 견습',      type:'minion', cost:4, atk:3, hp:4, text:'전투의 함성: 영웅 3 회복', effect:'battlecry_heal3'},
+  {id:'imm',     name:'라이언',     type:'minion', cost:6, atk:6, hp:6, text:'돌진',                effect:'charge'},
+  {id:'pho',     name:'페닉스 수호자',   type:'minion', cost:5, atk:5, hp:4, text:'전투의 함성: 적 모두 2피해', effect:'battlecry_aoe'},
+  {id:'dra',     name:'드래곤 전사',     type:'minion', cost:6, atk:5, hp:7, text:'도발',                effect:'taunt'},
+  {id:'tig',     name:'사자 장군',     type:'minion', cost:7, atk:7, hp:7, text:'전투의 함성: 무작위 적 미니언 처치', effect:'battlecry_destroy'},
 ];
 
 // ─── 게임 상태 ─────────────────────────────────────
@@ -277,7 +267,7 @@ function foeAI() {
   if (p.mana >= 2 && !p.powerUsed) {
     p.mana -= 2; p.powerUsed = true;
     state.you.hp -= 1;
-    log('적 구미호 술수: 내 영웅 1 피해', 'foe');
+    log('적 흑마법 일격: 내 영웅 1 피해', 'foe');
     checkOver();
   }
   setTimeout(() => { startTurn('you'); render(); }, 800);
