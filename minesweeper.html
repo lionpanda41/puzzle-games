@@ -8,7 +8,7 @@
 :root{
   --bg:#2e3440;
   --cell:#3b4252;
-  --cell-open:#4c566a;
+  --cell-open:#1a1f2a;   /* 더 어둡게 — 닫힌 셀과 명확 구분 */
   --grid:#1a2230;
   --frame:#fbbf24;
   --given:#d8dee9;
@@ -46,7 +46,7 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
   transition:background-color .1s;position:relative;overflow:hidden;
   font-family:'Arial Black','Helvetica',sans-serif;
 }
-.cell.open{background-color:var(--cell-open)}
+.cell.open{background-color:var(--cell-open);box-shadow:inset 0 0 0 2px #475569, inset 0 0 0 4px #0a0d12}
 .cell.flag::after{content:'🚩';font-size:0.7em}
 .cell.mine::after{content:'💣';font-size:0.7em}
 .cell.mine.exploded{background-color:var(--mine)!important;animation:explode 0.4s}
@@ -66,9 +66,17 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 .cell.safe-cell{background-color:var(--safe)!important;z-index:5;animation:blink-safe 1.5s ease-in-out infinite}
 @keyframes blink-safe{0%,100%{background-color:#7ea564}50%{background-color:#5e7d4a}}
 .cell.safe-cell .row-overlay,.cell.safe-cell .col-overlay{display:none!important}
-.cell.diff-easy{background-color:rgba(94,125,74,0.45)}
-.cell.diff-mid{background-color:rgba(76,86,106,0.45)}
-.cell.diff-hard{background-color:rgba(138,68,72,0.45)}
+/* 깃발 셀 — overlay 가리지 않게 z-index 위로 */
+.cell.flag{z-index:6}
+.cell.flag .row-overlay,.cell.flag .col-overlay{display:none!important}
+/* 위험도 5단계 */
+.cell.dng-1{background-color:rgba(94,125,74,0.40)}   /* 매우 낮음 */
+.cell.dng-2{background-color:rgba(126,165,100,0.45)} /* 낮음 */
+.cell.dng-3{background-color:rgba(235,203,139,0.45)} /* 중간 */
+.cell.dng-4{background-color:rgba(208,135,112,0.50)} /* 높음 */
+.cell.dng-5{background-color:rgba(191,97,106,0.60)}  /* 매우 높음 */
+/* 흑백 모드 */
+body.bw{filter:grayscale(1) contrast(1.1)}
 #actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center;align-items:center;max-width:96vw}
 #actions button{background:#1e293b;color:#94a3b8;padding:6px 14px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
 #actions button:hover{background:#334155;color:#e2e8f0}
@@ -86,6 +94,11 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
 #help b{color:#fbbf24}
 #padmap-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #fbbf24;border-radius:10px;padding:18px 24px;z-index:30;font-size:12px;color:#cbd5e1;line-height:1.6;min-width:320px;max-width:90vw;max-height:90vh;overflow-y:auto}
 #padmap-modal.hidden{display:none}
+#menu-modal.hidden{display:none}
+#confirm-modal.hidden{display:none}
+#menu-modal .item{padding:10px 14px;margin:3px 0;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+#menu-modal .item.sel{background:#1d4ed8;color:#fff;outline:1px solid #fbbf24}
+#menu-modal .item:hover{background:#334155}
 #pad-status{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:12px;color:#fbbf24;background:rgba(15,23,42,0.92);padding:6px 12px;border-radius:6px;max-width:96vw;font-family:monospace;line-height:1.4;z-index:100;border:1px solid #fbbf24}
 @media (max-width:768px){
   #help{display:none}
@@ -110,6 +123,7 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
   <button id="btn-line" class="toggle-btn">라인 OFF</button>
   <button id="btn-color" class="toggle-btn">위험 OFF</button>
   <button id="btn-safe" class="toggle-btn">안전셀 OFF</button>
+  <button id="btn-bw" class="toggle-btn">흑백 OFF</button>
   <span class="btn-sep" aria-hidden="true"></span>
   <button id="btn-new" class="action-btn primary">새문제</button>
   <button id="btn-help" class="action-btn">?</button>
@@ -156,6 +170,20 @@ body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display
   </div>
 </div>
 <div id="pad-status"></div>
+<!-- 메뉴 (START) -->
+<div id="menu-modal" class="hidden" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #3b82f6;border-radius:10px;padding:18px 24px;z-index:40;min-width:280px;font-size:14px;color:#cbd5e1">
+  <div style="color:#fbbf24;font-weight:bold;text-align:center;margin-bottom:12px;letter-spacing:2px">─ 메 뉴 ─</div>
+  <div id="menu-items"></div>
+  <div style="margin-top:10px;font-size:11px;opacity:0.7;text-align:center">↑↓ 이동 · A 선택 · B/START 닫기</div>
+</div>
+<!-- 확인 다이얼로그 (새 게임 시) -->
+<div id="confirm-modal" class="hidden" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #fbbf24;border-radius:10px;padding:24px 32px;z-index:50;min-width:280px;font-size:16px;color:#e2e8f0;text-align:center">
+  <div id="confirm-msg" style="margin-bottom:18px"></div>
+  <div style="display:flex;gap:12px;justify-content:center">
+    <button id="confirm-yes" style="background:#1d4ed8;color:#fff;border:1px solid #3b82f6;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-family:monospace">예 (A)</button>
+    <button id="confirm-no" style="background:#1e293b;color:#cbd5e1;border:1px solid #475569;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-family:monospace">아니오 (B)</button>
+  </div>
+</div>
 
 <script>
 // ─── 보드 상태 ─────────────────────────────────────────
@@ -278,9 +306,9 @@ function bindCell(cell, r, c) {
     }
     if (e.button === 0) { selR = r; selC = c; openCell(r, c); }
     else if (e.button === 1) { selR = r; selC = c; chord(r, c); e.preventDefault(); }
-    else if (e.button === 2) { selR = r; selC = c; toggleFlag(r, c); }
+    else if (e.button === 2) { selR = r; selC = c; chord(r, c); }  // 우클릭 = chord
   });
-  cell.addEventListener('contextmenu', e => { e.preventDefault(); selR = r; selC = c; toggleFlag(r, c); });
+  cell.addEventListener('contextmenu', e => { e.preventDefault(); selR = r; selC = c; chord(r, c); });
   // mouseenter → selected 추적
   cell.addEventListener('mouseenter', () => {
     if (inputMode !== 'mouse') return;
@@ -514,12 +542,14 @@ function render() {
           cell.appendChild(lay);
         }
       }
-      // 위험도 색
+      // 위험도 5단계 색
       if (modeColor && !co.open && !co.flag) {
         const d = dangerRating(r, c);
-        if (d >= 0.66) cell.classList.add('diff-hard');
-        else if (d >= 0.33) cell.classList.add('diff-mid');
-        else if (d > 0) cell.classList.add('diff-easy');
+        if (d >= 0.80) cell.classList.add('dng-5');
+        else if (d >= 0.60) cell.classList.add('dng-4');
+        else if (d >= 0.40) cell.classList.add('dng-3');
+        else if (d >= 0.20) cell.classList.add('dng-2');
+        else if (d > 0) cell.classList.add('dng-1');
       }
       // 안전 셀 (확정 0%)
       if (modeSafe && !co.open && !co.flag && isSafeCell(r, c)) {
@@ -584,6 +614,15 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'l' || e.key === 'L') { toggleLine(); }
   else if (e.key === 'c' || e.key === 'C') { toggleColor(); }
   else if (e.key === 's' || e.key === 'S') { toggleSafe(); }
+  else if (e.key === 'b' || e.key === 'B') { toggleBW(); }
+  else if (e.key === 'm' || e.key === 'M') { toggleMenu(); }
+  else if (e.key === 'Enter' && confirmOpen) { confirmAccept(); }
+  else if (e.key === 'Escape' && confirmOpen) { confirmCancel(); }
+  else if (e.key === 'Escape' && menuOpen) { closeMenu(); }
+  else if (menuOpen) {
+    if (e.key === 'ArrowUp') { menuMove(-1); e.preventDefault(); }
+    else if (e.key === 'ArrowDown') { menuMove(1); e.preventDefault(); }
+  }
 });
 
 // 토글
@@ -608,14 +647,106 @@ function toggleSafe() {
 document.getElementById('btn-line').addEventListener('click', toggleLine);
 document.getElementById('btn-color').addEventListener('click', toggleColor);
 document.getElementById('btn-safe').addEventListener('click', toggleSafe);
+document.getElementById('btn-bw').addEventListener('click', toggleBW);
 document.getElementById('btn-easy').addEventListener('click', () => newGame('easy'));
 document.getElementById('btn-medium').addEventListener('click', () => newGame('medium'));
 document.getElementById('btn-hard').addEventListener('click', () => newGame('hard'));
-document.getElementById('btn-new').addEventListener('click', () => newGame());
-document.getElementById('face').addEventListener('click', () => newGame());
+document.getElementById('btn-new').addEventListener('click', () => askNewGame());
+document.getElementById('face').addEventListener('click', () => askNewGame());
 document.getElementById('btn-help').addEventListener('click', () => {
   document.getElementById('help').classList.toggle('hidden');
 });
+
+// ─── 흑백 모드 ─────────────────────────────────────
+let modeBW = false;
+function toggleBW() {
+  modeBW = !modeBW;
+  document.body.classList.toggle('bw', modeBW);
+  const btn = document.getElementById('btn-bw');
+  if (btn) {
+    btn.textContent = '흑백 ' + (modeBW ? 'ON' : 'OFF');
+    btn.classList.toggle('active', modeBW);
+  }
+}
+
+// ─── 메뉴 (START) ─────────────────────────────────
+let menuOpen = false;
+let menuIdx = 0;
+const MENU = [
+  {id:'new',    label:'새 게임',           act:() => askNewGame()},
+  {id:'easy',   label:'쉬움 9×9',          act:() => newGame('easy')},
+  {id:'medium', label:'중간 16×16',        act:() => newGame('medium')},
+  {id:'hard',   label:'어려움 24×16',      act:() => newGame('hard')},
+  {id:'line',   label:'라인 힌트',         act:() => toggleLine(), val: () => modeLine},
+  {id:'color',  label:'위험도 색',         act:() => toggleColor(), val: () => modeColor},
+  {id:'safe',   label:'안전셀 표시',       act:() => toggleSafe(), val: () => modeSafe},
+  {id:'bw',     label:'흑백 모드',         act:() => toggleBW(), val: () => modeBW},
+  {id:'pad',    label:'🎮 패드 키 세팅',   act:() => { buildPadmapRows(); document.getElementById('padmap-modal').classList.remove('hidden'); closeMenu(); }},
+  {id:'help',   label:'❓ 도움말',          act:() => { document.getElementById('help').classList.toggle('hidden'); closeMenu(); }},
+  {id:'close',  label:'닫기',              act:() => closeMenu()},
+];
+function refreshMenu() {
+  const root = document.getElementById('menu-items');
+  root.innerHTML = '';
+  MENU.forEach((m, i) => {
+    const el = document.createElement('div');
+    el.className = 'item' + (i === menuIdx ? ' sel' : '');
+    const txt = document.createElement('span');
+    txt.textContent = m.label;
+    el.appendChild(txt);
+    if (m.val !== undefined) {
+      const v = document.createElement('span');
+      v.style.cssText = 'color:#fbbf24;font-size:11px';
+      v.textContent = m.val() ? 'ON' : 'OFF';
+      el.appendChild(v);
+    }
+    el.addEventListener('click', () => { menuIdx = i; menuSelect(); });
+    root.appendChild(el);
+  });
+}
+function openMenu() { menuOpen = true; menuIdx = 0; document.getElementById('menu-modal').classList.remove('hidden'); refreshMenu(); }
+function closeMenu() { menuOpen = false; document.getElementById('menu-modal').classList.add('hidden'); }
+function toggleMenu() { if (menuOpen) closeMenu(); else openMenu(); }
+function menuMove(d) { menuIdx = (menuIdx + d + MENU.length) % MENU.length; refreshMenu(); }
+function menuSelect() {
+  const m = MENU[menuIdx];
+  if (!m) return;
+  m.act();
+  if (m.val !== undefined) refreshMenu();  // 토글 항목은 메뉴 유지
+}
+
+// ─── 확인 다이얼로그 ──────────────────────────────
+let confirmOpen = false;
+let confirmCb = null;
+function askConfirm(msg, cb) {
+  document.getElementById('confirm-msg').innerHTML = msg;
+  document.getElementById('confirm-modal').classList.remove('hidden');
+  confirmOpen = true;
+  confirmCb = cb;
+}
+function confirmAccept() {
+  if (!confirmOpen) return;
+  confirmOpen = false;
+  document.getElementById('confirm-modal').classList.add('hidden');
+  const cb = confirmCb; confirmCb = null;
+  if (cb) cb(true);
+}
+function confirmCancel() {
+  if (!confirmOpen) return;
+  confirmOpen = false;
+  document.getElementById('confirm-modal').classList.add('hidden');
+  const cb = confirmCb; confirmCb = null;
+  if (cb) cb(false);
+}
+function askNewGame() {
+  // 첫 진입(아직 시작 안 했음)이면 바로 새 게임
+  if (firstClick || gameOver || gameWon) { newGame(); return; }
+  askConfirm('정말 새 게임을 시작할까요?<br><small style="opacity:0.7">현재 진행 상황은 사라집니다</small>', (yes) => { if (yes) newGame(); });
+}
+document.getElementById('confirm-yes').addEventListener('click', confirmAccept);
+document.getElementById('confirm-no').addEventListener('click', confirmCancel);
+// btn-new는 confirm 거치도록
+document.getElementById('btn-new').removeEventListener && document.getElementById('btn-new').removeEventListener('click', () => newGame());
 
 // 우클릭 보드 메뉴 차단
 document.getElementById('board').addEventListener('contextmenu', e => e.preventDefault());
@@ -630,12 +761,12 @@ for (const k of Object.keys(padmapCustom)) {
 localStorage.setItem('mine-padmap', JSON.stringify(padmapCustom));
 
 const PAD_ACTIONS = [
-  {id:'open',   name:'A — 열기',           type:'btn', stdIdx:0, rawIdx:0},
-  {id:'flag',   name:'B — 깃발 토글',      type:'btn', stdIdx:1, rawIdx:1},
-  {id:'chord',  name:'X — 코드(주변 열기)', type:'btn', stdIdx:2, rawIdx:2},
-  {id:'new',    name:'Y — 새 게임',        type:'btn', stdIdx:3, rawIdx:3},
-  {id:'help',   name:'START — 도움말',     type:'btn', stdIdx:9, rawIdx:7},
-  {id:'line',   name:'SELECT — 라인 토글', type:'btn', stdIdx:8, rawIdx:6},
+  {id:'open',   name:'A — 열기/확인',       type:'btn', stdIdx:0, rawIdx:0},
+  {id:'chord',  name:'B — 코드(주변 열기)', type:'btn', stdIdx:1, rawIdx:1},
+  {id:'flag2',  name:'X — 코드(대체)',      type:'btn', stdIdx:2, rawIdx:2},
+  {id:'flag',   name:'Y — 깃발 토글',       type:'btn', stdIdx:3, rawIdx:3},
+  {id:'menu',   name:'START — 메뉴',        type:'btn', stdIdx:9, rawIdx:7},
+  {id:'newg',   name:'SELECT — 새 게임',    type:'btn', stdIdx:8, rawIdx:6},
 ];
 let _learningId = null;
 let _learnPrevBtns = null, _learnPrevAxes = null;
@@ -796,9 +927,13 @@ function pollGP() {
       if (gp.buttons[15] && gp.buttons[15].pressed) dc = 1;
     }
     if ((dr || dc) && gpAxisCooldown <= 0) {
-      selR = Math.max(0, Math.min(ROWS - 1, selR + dr));
-      selC = Math.max(0, Math.min(COLS - 1, selC + dc));
-      render();
+      if (menuOpen) {
+        if (dr) menuMove(dr);
+      } else if (!confirmOpen) {
+        selR = Math.max(0, Math.min(ROWS - 1, selR + dr));
+        selC = Math.max(0, Math.min(COLS - 1, selC + dc));
+        render();
+      }
       gpAxisCooldown = 3;
     }
     if (gpAxisCooldown > 0) gpAxisCooldown--;
@@ -810,12 +945,12 @@ function pollGP() {
       return !!(bt && (bt.pressed || bt.value > 0.3));
     }
     const acts = [
-      ['open',  () => openCell(selR, selC)],
+      ['open',  () => { if (menuOpen) menuSelect(); else if (confirmOpen) confirmAccept(); else openCell(selR, selC); }],
+      ['chord', () => { if (confirmOpen) confirmCancel(); else chord(selR, selC); }],
+      ['flag2', () => chord(selR, selC)],
       ['flag',  () => toggleFlag(selR, selC)],
-      ['chord', () => chord(selR, selC)],
-      ['new',   () => newGame()],
-      ['help',  () => document.getElementById('help').classList.toggle('hidden')],
-      ['line',  () => toggleLine()],
+      ['menu',  () => toggleMenu()],
+      ['newg',  () => askNewGame()],
     ];
     for (const [id, fn] of acts) {
       const pressed = actionBtn(id);
