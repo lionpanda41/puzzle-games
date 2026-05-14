@@ -129,6 +129,28 @@ header button:hover{background:#3a2f25}
 <script>
 // ─── 카드 데이터 (하스 vanilla 짭) ─────────────────────────
 // 비용/공격/체력/효과
+const CHAR_IMG = {
+  '김진우 견습':'world/characters/김진우.png',
+  '강석현 도사':'world/characters/강석현.png',
+  '신소라 학자':'world/characters/신소라.png',
+  '한우진 구미호':'world/characters/한우진.png',
+  '이영주 무녀':'world/characters/이영주.png',
+  '차정민 반항자':'world/characters/차정민.png',
+  '김영수 판별사':'world/characters/김영수.png',
+  '도깨비 일꾼':'world/characters/도깨비일꾼.png',
+  '도깨비 전사':'world/characters/도깨비전사.png',
+  '산신':'world/characters/산신.png',
+  '어린 구미호':'world/characters/구미호병사.png',
+  '구미호 병사':'world/characters/구미호병사.png',
+  '도사 궁수':'world/characters/도사궁수.png',
+  '광대':'world/characters/광대.png',
+  '무당전사':'world/characters/무당전사.png',
+  '무당':'world/characters/무당전사.png',
+  '신선 검사':'world/characters/신선검사.png',
+  '주작 수호자':'world/characters/주작수호자.png',
+  '청룡 전사':'world/characters/청룡전사.png',
+  '백호 장군':'world/characters/백호장군.png',
+};
 const CARDS = [
   // 미니언
   {id:'kim',     name:'김진우 견습',   type:'minion', cost:2, atk:2, hp:3, text:'1턴 후 공격력 +1', effect:'growth'},
@@ -150,6 +172,15 @@ const CARDS = [
   {id:'aoe',     name:'바람 베기',     type:'spell',  cost:4, text:'적 모든 미니언 2피해',     effect:'aoe2'},
   {id:'polymorph',name:'변신',         type:'spell',  cost:4, text:'대상 미니언을 1/1로',     effect:'poly'},
   {id:'buff',    name:'음양 가호',     type:'spell',  cost:2, text:'대상 미니언 +2/+2',       effect:'buff22'},
+  // 추가 미니언 (WoW 스타일 캐릭터)
+  {id:'gum',     name:'구미호 병사',   type:'minion', cost:4, atk:4, hp:4, text:'은신',                effect:'stealth'},
+  {id:'arch',    name:'도사 궁수',     type:'minion', cost:3, atk:3, hp:2, text:'전투의 함성: 적 미니언 2피해', effect:'battlecry_zap'},
+  {id:'kwd',     name:'광대',          type:'minion', cost:3, atk:2, hp:3, text:'적 영웅 능력 비용 +1', effect:''},
+  {id:'shawar',  name:'무당전사',      type:'minion', cost:4, atk:3, hp:4, text:'전투의 함성: 영웅 3 회복', effect:'battlecry_heal3'},
+  {id:'imm',     name:'신선 검사',     type:'minion', cost:6, atk:6, hp:6, text:'돌진',                effect:'charge'},
+  {id:'pho',     name:'주작 수호자',   type:'minion', cost:5, atk:5, hp:4, text:'전투의 함성: 적 모두 2피해', effect:'battlecry_aoe'},
+  {id:'dra',     name:'청룡 전사',     type:'minion', cost:6, atk:5, hp:7, text:'도발',                effect:'taunt'},
+  {id:'tig',     name:'백호 장군',     type:'minion', cost:7, atk:7, hp:7, text:'전투의 함성: 무작위 적 미니언 처치', effect:'battlecry_destroy'},
 ];
 
 // ─── 게임 상태 ─────────────────────────────────────
@@ -254,6 +285,7 @@ function foeAI() {
 
 function playMinion(side, card) {
   const p = state[side];
+  const opp = side === "you" ? state.foe : state.you;
   const idx = p.hand.indexOf(card);
   if (idx < 0) return;
   if (card.cost > p.mana) return;
@@ -263,7 +295,20 @@ function playMinion(side, card) {
   p.field.push(card);
   log(`${side==='you'?'내':'적'} ${card.name} 소환 (${card.atk}/${card.hp})`, side);
   // 전투의 함성
-  if (card.effect === 'battlecry_heal4') {
+  if (card.effect === 'battlecry_heal3') {
+    p.hp = Math.min(p.maxHp, p.hp + 3);
+    log(`  전투의 함성: 영웅 3 회복`, side);
+  } else if (card.effect === 'battlecry_zap') {
+    const tgt = opp ? null : (side==='you'?state.foe:state.you).field[0];
+    const enemy = (side==='you'?state.foe:state.you).field;
+    if (enemy.length) { enemy[0].hp -= 2; log(`  전투의 함성: ${enemy[0].name}에 2피해`, side); }
+  } else if (card.effect === 'battlecry_aoe') {
+    (side==='you'?state.foe:state.you).field.forEach(m => m.hp -= 2);
+    log(`  전투의 함성: 적 모두 2피해`, side);
+  } else if (card.effect === 'battlecry_destroy') {
+    const e = (side==='you'?state.foe:state.you).field;
+    if (e.length) { const v = e[Math.floor(Math.random()*e.length)]; v.hp = 0; log(`  전투의 함성: ${v.name} 처치`, side); }
+  } else if (card.effect === 'battlecry_heal4') {
     p.hp = Math.min(p.maxHp, p.hp + 4);
     log(`  전투의 함성: 영웅 4 회복`, side);
   } else if (card.effect === 'battlecry_heal2') {
@@ -467,11 +512,13 @@ function render() {
   state.you.hand.forEach((c, i) => {
     const el = document.createElement('div');
     el.className = 'hand-card' + (c.cost <= state.you.mana && state.turn === 'you' ? ' playable' : ' unplayable');
+    const himg = c.type === 'minion' ? CHAR_IMG[c.name] : '';
     el.innerHTML = `
       <div class="cost">${c.cost}</div>
-      <div class="name">${c.name}</div>
-      <div class="body">${c.text || ''}</div>
-      ${c.type === 'minion' ? `<div class="stats"><span class="atk">⚔️ ${c.atk}</span><span class="hp-num">❤️ ${c.hp}</span></div>` : '<div class="stats" style="justify-content:center;color:#88c0d0">🔮 주문</div>'}
+      ${himg ? `<div style="height:36px;overflow:hidden;border-radius:4px 4px 0 0;margin:-5px -5px 2px"><img src="${himg}" style="width:100%;display:block;margin-top:-10px"></div>` : `<div style="height:36px;display:flex;align-items:center;justify-content:center;font-size:24px">${c.type === 'spell' ? '🔮' : ''}</div>`}
+      <div class="name" style="font-size:9px">${c.name}</div>
+      <div class="body" style="font-size:8px">${c.text || ''}</div>
+      ${c.type === 'minion' ? `<div class="stats"><span class="atk">⚔️${c.atk}</span><span class="hp-num">❤️${c.hp}</span></div>` : '<div class="stats" style="justify-content:center;color:#88c0d0">주문</div>'}
     `;
     el.addEventListener('click', () => clickHandCard(i));
     hand.appendChild(el);
@@ -488,10 +535,11 @@ function render() {
       if (m.exhausted) cls.push('exhausted');
       if (m.effect === 'taunt') cls.push('taunt');
       el.className = cls.join(' ');
+      const img = CHAR_IMG[m.name] || '';
       el.innerHTML = `
-        <div class="name">${m.name}</div>
-        <div class="body">${m.text || ''}</div>
-        <div class="stats"><span class="atk">⚔️ ${m.atk}</span><span class="hp-num">❤️ ${m.hp}</span></div>
+        ${img ? `<div style="height:38px;overflow:hidden;border-radius:4px 4px 0 0;margin:-5px -5px 2px"><img src="${img}" style="width:100%;height:auto;display:block;margin-top:-12px"></div>` : ''}
+        <div class="name" style="font-size:9px">${m.name}</div>
+        <div class="stats"><span class="atk">⚔️${m.atk}</span><span class="hp-num">❤️${m.hp}</span></div>
       `;
       el.addEventListener('click', () => {
         if (targetClickWrap(side, i)) return;
