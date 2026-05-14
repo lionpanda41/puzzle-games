@@ -2,6 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>청산 카드 배틀 (하스 vanilla 짭)</title>
 <style>
@@ -135,7 +137,7 @@ header button:hover{background:#3a2f25;border-color:var(--frame)}
   <div class="hero-row" id="foe-row">
     <div class="mana-disp"><div class="crystals" id="foe-mana-cryst"></div><span><span id="foe-mana">0</span>/<span id="foe-max-mana">0</span></span></div>
     <div class="hero-portrait foe" id="foe-hero">
-      <img src="world/characters/블랙마크.png" alt="foe">
+      <img src="world/characters/블랙마크.png?v=1778726196.707" alt="foe">
       <div class="hero-hp">❤️ <span id="foe-hp">30</span></div>
     </div>
     <div class="deck-pile"><div class="deck-card"></div><small>덱 <span id="foe-deck">20</span></small></div>
@@ -151,7 +153,7 @@ header button:hover{background:#3a2f25;border-color:var(--frame)}
       도술의<br>화살<br><small>1피해</small>
     </button>
     <div class="hero-portrait you" id="you-hero">
-      <img src="world/characters/한유진.png" alt="you">
+      <img src="world/characters/한유진.png?v=1778726196.707" alt="you">
       <div class="hero-hp">❤️ <span id="you-hp">30</span></div>
     </div>
     <div class="mana-disp"><div class="crystals" id="you-mana-cryst"></div><span><span id="you-mana">0</span>/<span id="you-max-mana">0</span></span></div>
@@ -184,7 +186,7 @@ const CHAR_IMG = {
   '닐라스':'world/characters/닐라스.png',
   '블랙마크':'world/characters/블랙마크.png',
   '올드 레이븐':'world/characters/올드_레이븐.png',
-  '아나리':'world/characters/아나리.png',
+  '아나리':'world/characters/아나리.png?v=1778726196.707',
 };
 function imgOf(name) {
   for (const k of Object.keys(CHAR_IMG)) if (name.includes(k)) return CHAR_IMG[k];
