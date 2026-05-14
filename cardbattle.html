@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>청산 카드 배틀 (하스 vanilla 짭)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1612;color:#e2d5b8;font-family:'Noto Sans KR','Helvetica',sans-serif;min-height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+header{background:#0f0d09;padding:8px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3a2f25}
+header .title{color:#fbbf24;font-weight:bold;font-size:14px}
+header .menu{display:flex;gap:8px}
+header button{background:#2d2620;color:#e2d5b8;border:1px solid #475569;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:11px}
+header button:hover{background:#3a2f25}
+#log{position:fixed;top:60px;right:8px;width:260px;max-height:40vh;overflow-y:auto;background:rgba(15,13,9,0.92);border:1px solid #3a2f25;border-radius:6px;padding:8px;font-size:11px;line-height:1.6;z-index:20}
+#log .e{color:#a89878;border-bottom:1px solid #1f1a14;padding:3px 0}
+#log .e.you{color:#88c0d0}
+#log .e.foe{color:#bf616a}
+#log .e.sys{color:#fbbf24}
+#board{flex:1;display:flex;flex-direction:column;padding:8px;gap:6px}
+.side{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;min-height:140px}
+.side.foe{background:#2d1f1f;border:1px solid #5a3030}
+.side.you{background:#1f2920;border:1px solid #305a40}
+.hero{display:flex;flex-direction:column;align-items:center;gap:4px;width:90px}
+.hero img{width:70px;height:70px;border-radius:50%;background:#0f0d09;border:2px solid #fbbf24;object-fit:cover}
+.hero.targeted{outline:3px dashed #fbbf24;animation:pulse 0.8s ease-in-out infinite}
+@keyframes pulse{50%{outline-color:#fff}}
+.hp{font-weight:bold;color:#bf616a;font-size:14px}
+.mana{color:#88c0d0;font-size:13px;font-weight:bold}
+.power{background:#1d4ed8;color:#fff;border:1px solid #3b82f6;padding:5px 8px;border-radius:4px;cursor:pointer;font-size:11px;min-width:80px}
+.power:disabled{opacity:0.4;cursor:not-allowed}
+.field{flex:1;display:flex;gap:8px;align-items:center;justify-content:center;min-height:120px;padding:6px;background:rgba(0,0,0,0.25);border-radius:6px;flex-wrap:wrap}
+.deck{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px}
+.deck-card{width:34px;height:48px;background:linear-gradient(135deg,#3a2f25,#1a1612);border:1px solid #fbbf24;border-radius:4px}
+.minion{width:88px;height:110px;background:linear-gradient(180deg,#3a2f25,#1a1612);border:2px solid #5a4030;border-radius:8px;padding:5px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;position:relative;transition:transform 0.15s}
+.minion:hover{transform:translateY(-4px);border-color:#fbbf24}
+.minion.can-attack{border-color:#7ea564;box-shadow:0 0 8px #7ea564}
+.minion.exhausted{opacity:0.55}
+.minion.taunt{box-shadow:inset 0 0 0 2px #d4a857}
+.minion .name{font-size:10px;font-weight:bold;color:#fbbf24;text-align:center;line-height:1.2}
+.minion .body{font-size:9px;color:#e2d5b8;text-align:center;line-height:1.2;flex:1;display:flex;align-items:center;justify-content:center;padding:2px}
+.minion .stats{display:flex;justify-content:space-between;font-weight:bold;padding:0 2px}
+.minion .atk{color:#d4a857}
+.minion .hp-num{color:#bf616a}
+#hand{display:flex;gap:6px;padding:8px;justify-content:center;background:#0f0d09;border-top:1px solid #3a2f25;min-height:130px;flex-wrap:wrap}
+.hand-card{width:84px;height:110px;background:linear-gradient(180deg,#2d2620,#1a1612);border:2px solid #5a4030;border-radius:8px;padding:5px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;position:relative;transition:transform 0.15s}
+.hand-card:hover{transform:translateY(-8px);border-color:#fbbf24}
+.hand-card.playable{border-color:#7ea564;box-shadow:0 0 6px #7ea564}
+.hand-card.unplayable{opacity:0.5}
+.hand-card .cost{position:absolute;top:-6px;left:-6px;width:22px;height:22px;background:#88c0d0;color:#0f0d09;border:2px solid #1a1612;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px}
+.hand-card .name{font-size:10px;font-weight:bold;color:#fbbf24;text-align:center}
+.hand-card .body{font-size:9px;color:#e2d5b8;line-height:1.2;flex:1;display:flex;align-items:center;justify-content:center;padding:2px;text-align:center}
+.hand-card .stats{display:flex;justify-content:space-between;font-weight:bold;padding:0 2px}
+.foe .hand-card{background:linear-gradient(135deg,#3a2520,#1a1212);transform:rotate(180deg)}
+#foe-hand{display:flex;gap:4px;padding:4px}
+.foe-card-back{width:36px;height:50px;background:linear-gradient(135deg,#3a2520,#5a2030);border:1px solid #bf616a;border-radius:4px}
+.targeting{cursor:crosshair !important}
+.end-turn{background:#1d4ed8;color:#fff;border:1px solid #3b82f6;padding:10px 18px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:13px}
+.end-turn:hover{background:#2563eb}
+.end-turn.foe-turn{background:#5a3030;color:#a89878;cursor:not-allowed}
+#turn-controls{position:fixed;right:8px;bottom:140px;display:flex;flex-direction:column;gap:6px;z-index:15}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:50;font-size:32px;color:#fbbf24;flex-direction:column;gap:18px}
+#overlay.show{display:flex}
+#overlay button{background:#1d4ed8;color:#fff;border:0;padding:14px 28px;border-radius:6px;cursor:pointer;font-size:16px}
+.spell-anim{position:fixed;font-size:48px;animation:spellfly 0.8s ease-out;pointer-events:none;z-index:30}
+@keyframes spellfly{0%{transform:scale(0);opacity:1}50%{transform:scale(1.5);opacity:1}100%{transform:scale(0.5);opacity:0}}
+@media (max-width:768px){
+  .minion{width:72px;height:92px}
+  .hand-card{width:70px;height:96px}
+  .hero img{width:54px;height:54px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">⚔️ 청산 카드 배틀</div>
+  <div class="menu">
+    <button id="btn-new">새 게임</button>
+    <button id="btn-help">도움말</button>
+    <button id="btn-log">로그</button>
+  </div>
+</header>
+
+<div id="board">
+  <!-- 적 -->
+  <div class="side foe">
+    <div class="hero" id="foe-hero">
+      <img src="world/characters/한우진.png" alt="foe">
+      <div class="hp">❤️ <span id="foe-hp">30</span></div>
+      <button class="power" id="foe-power" disabled>구미호 술수</button>
+    </div>
+    <div class="field" id="foe-field"></div>
+    <div class="deck">
+      <div class="deck-card"></div>
+      <small><span id="foe-deck">20</span>장</small>
+    </div>
+  </div>
+  <div id="foe-hand"></div>
+
+  <!-- 내 -->
+  <div class="side you">
+    <div class="hero" id="you-hero">
+      <img src="world/characters/김진우.png" alt="you">
+      <div class="hp">❤️ <span id="you-hp">30</span></div>
+      <div class="mana">💧 <span id="you-mana">0</span>/<span id="you-max-mana">0</span></div>
+      <button class="power" id="you-power">2💧 도술의 화살 (1피해)</button>
+    </div>
+    <div class="field" id="you-field"></div>
+    <div class="deck">
+      <div class="deck-card"></div>
+      <small><span id="you-deck">20</span>장</small>
+    </div>
+  </div>
+</div>
+
+<div id="hand"></div>
+
+<div id="turn-controls">
+  <button class="end-turn" id="btn-end">턴 종료</button>
+</div>
+
+<div id="log"></div>
+
+<div id="overlay">
+  <div id="overlay-msg"></div>
+  <button id="overlay-btn">새 게임</button>
+</div>
+
+<script>
+// ─── 카드 데이터 (하스 vanilla 짭) ─────────────────────────
+// 비용/공격/체력/효과
+const CARDS = [
+  // 미니언
+  {id:'kim',     name:'김진우 견습',   type:'minion', cost:2, atk:2, hp:3, text:'1턴 후 공격력 +1', effect:'growth'},
+  {id:'kang',    name:'강석현 도사',   type:'minion', cost:5, atk:5, hp:5, text:'전투의 함성: 영웅 4 회복', effect:'battlecry_heal4'},
+  {id:'sora',    name:'신소라 학자',   type:'minion', cost:4, atk:3, hp:6, text:'도발', effect:'taunt'},
+  {id:'han',     name:'한우진 구미호', type:'minion', cost:5, atk:4, hp:5, text:'은신', effect:'stealth'},
+  {id:'young',   name:'이영주 무녀',   type:'minion', cost:3, atk:2, hp:4, text:'전투의 함성: 카드 1장 드로우', effect:'battlecry_draw'},
+  {id:'cha',     name:'차정민 반항자', type:'minion', cost:2, atk:3, hp:2, text:'돌진', effect:'charge'},
+  {id:'soo',     name:'김영수 판별사', type:'minion', cost:4, atk:3, hp:5, text:'적 비밀/은신 무효 (사기방지)', effect:'antifraud'},
+  {id:'imp',     name:'도깨비 일꾼',   type:'minion', cost:1, atk:1, hp:1, text:'',                    effect:''},
+  {id:'sansin',  name:'산신',          type:'minion', cost:4, atk:4, hp:5, text:'도발',                effect:'taunt'},
+  {id:'gumiho1', name:'어린 구미호',   type:'minion', cost:3, atk:3, hp:3, text:'',                    effect:''},
+  {id:'goblin',  name:'도깨비 전사',   type:'minion', cost:2, atk:2, hp:2, text:'',                    effect:''},
+  {id:'priest',  name:'무당',          type:'minion', cost:3, atk:1, hp:4, text:'전투의 함성: 영웅 2 회복', effect:'battlecry_heal2'},
+  // 주문
+  {id:'arrow',   name:'도술 화살',     type:'spell',  cost:1, text:'대상에 1피해',            effect:'dmg1'},
+  {id:'fireball',name:'화염구',        type:'spell',  cost:4, text:'대상에 6피해',            effect:'dmg6'},
+  {id:'heal',    name:'신단의 빛',     type:'spell',  cost:2, text:'영웅 6 회복',              effect:'heal6'},
+  {id:'aoe',     name:'바람 베기',     type:'spell',  cost:4, text:'적 모든 미니언 2피해',     effect:'aoe2'},
+  {id:'polymorph',name:'변신',         type:'spell',  cost:4, text:'대상 미니언을 1/1로',     effect:'poly'},
+  {id:'buff',    name:'음양 가호',     type:'spell',  cost:2, text:'대상 미니언 +2/+2',       effect:'buff22'},
+];
+
+// ─── 게임 상태 ─────────────────────────────────────
+let state = null;
+
+function newDeck() {
+  // 18장 카드 풀에서 20장 덱 (중복 가능)
+  const deck = [];
+  while (deck.length < 20) {
+    const c = CARDS[Math.floor(Math.random()*CARDS.length)];
+    deck.push({...c, _uid: Math.random().toString(36).slice(2,8)});
+  }
+  return deck;
+}
+
+function initGame() {
+  state = {
+    you: {hp:30, maxHp:30, mana:0, maxMana:0, deck:newDeck(), hand:[], field:[], powerUsed:false},
+    foe: {hp:30, maxHp:30, mana:0, maxMana:0, deck:newDeck(), hand:[], field:[], powerUsed:false},
+    turn: 'you',
+    turnNum: 1,
+    over: false,
+  };
+  // 시작 패 3장
+  for (let i = 0; i < 3; i++) {
+    state.you.hand.push(state.you.deck.pop());
+    state.foe.hand.push(state.foe.deck.pop());
+  }
+  // 시작 코인 (후공) — 단순화: you가 선공
+  startTurn('you');
+  log('새 게임 시작 — 김진우 vs 한우진', 'sys');
+  render();
+}
+
+function startTurn(side) {
+  const p = state[side];
+  p.maxMana = Math.min(10, p.maxMana + 1);
+  p.mana = p.maxMana;
+  p.powerUsed = false;
+  // 드로우
+  if (p.deck.length > 0) p.hand.push(p.deck.pop());
+  else { p[side === 'you' ? 'you' : 'foe'] = p; state[side].hp -= 1; log(side === 'you' ? '내 덱 비어 1 피해' : '적 덱 비어 1 피해'); }
+  // 미니언 공격 가능 (소환자 약점 해제)
+  p.field.forEach(m => { m.exhausted = false; if (m.effect === 'growth') m.atk += 1; });
+  state.turn = side;
+  log(side === 'you' ? '── 내 턴 ──' : '── 적 턴 ──', 'sys');
+}
+
+function endTurn() {
+  if (state.over) return;
+  if (state.turn === 'you') {
+    startTurn('foe');
+    render();
+    setTimeout(foeAI, 600);
+  } else {
+    startTurn('you');
+    render();
+  }
+}
+
+function foeAI() {
+  if (state.over) return;
+  const p = state.foe;
+  // 1. 카드 플레이 (마나 닿는 만큼)
+  let played = true;
+  let safety = 0;
+  while (played && safety < 10) {
+    played = false; safety++;
+    const playable = p.hand.filter(c => c.cost <= p.mana);
+    if (!playable.length) break;
+    // 가장 비싼 거 우선
+    playable.sort((a,b)=>b.cost-a.cost);
+    const c = playable[0];
+    if (c.type === 'minion') {
+      playMinion('foe', c);
+      played = true;
+    } else if (c.type === 'spell') {
+      // 단순 — heal이면 자기 회복, dmg면 적(나) 영웅, aoe면 내 필드
+      castSpell('foe', c, c.effect === 'heal6' ? {side:'foe', target:'hero'} : (c.effect === 'aoe2' ? {side:'you'} : (c.effect === 'buff22' && p.field[0] ? {side:'foe', target:'minion', idx:0} : {side:'you', target:'hero'})));
+      played = true;
+    }
+  }
+  // 2. 공격
+  for (const m of [...p.field]) {
+    if (m.exhausted) continue;
+    // 도발 우선
+    const taunts = state.you.field.filter(x => x.effect === 'taunt');
+    const target = taunts.length ? taunts[0] : (Math.random() < 0.6 ? null : state.you.field[Math.floor(Math.random()*state.you.field.length)]);
+    if (target) attackMinion('foe', m, target);
+    else attackHero('foe', m);
+    if (state.over) return;
+  }
+  // 3. 영웅 능력 (2마나로 1피해)
+  if (p.mana >= 2 && !p.powerUsed) {
+    p.mana -= 2; p.powerUsed = true;
+    state.you.hp -= 1;
+    log('적 구미호 술수: 내 영웅 1 피해', 'foe');
+    checkOver();
+  }
+  setTimeout(() => { startTurn('you'); render(); }, 800);
+}
+
+function playMinion(side, card) {
+  const p = state[side];
+  const idx = p.hand.indexOf(card);
+  if (idx < 0) return;
+  if (card.cost > p.mana) return;
+  p.mana -= card.cost;
+  p.hand.splice(idx, 1);
+  card.exhausted = card.effect !== 'charge';
+  p.field.push(card);
+  log(`${side==='you'?'내':'적'} ${card.name} 소환 (${card.atk}/${card.hp})`, side);
+  // 전투의 함성
+  if (card.effect === 'battlecry_heal4') {
+    p.hp = Math.min(p.maxHp, p.hp + 4);
+    log(`  전투의 함성: 영웅 4 회복`, side);
+  } else if (card.effect === 'battlecry_heal2') {
+    p.hp = Math.min(p.maxHp, p.hp + 2);
+  } else if (card.effect === 'battlecry_draw') {
+    if (p.deck.length > 0) { p.hand.push(p.deck.pop()); log('  전투의 함성: 카드 1장 드로우', side); }
+  }
+}
+
+function castSpell(side, card, target) {
+  const p = state[side];
+  const opp = side === 'you' ? state.foe : state.you;
+  const idx = p.hand.indexOf(card);
+  if (idx >= 0) { p.hand.splice(idx, 1); p.mana -= card.cost; }
+  log(`${side==='you'?'내':'적'} ${card.name} 시전`, side);
+  if (card.effect === 'dmg1' || card.effect === 'dmg6') {
+    const dmg = card.effect === 'dmg6' ? 6 : 1;
+    if (target.target === 'hero') {
+      state[target.side].hp -= dmg;
+      log(`  ${dmg} 피해 → ${target.side==='you'?'내':'적'} 영웅`, side);
+    } else if (target.target === 'minion') {
+      const m = state[target.side].field[target.idx];
+      if (m) { m.hp -= dmg; log(`  ${dmg} 피해 → ${m.name}`, side); }
+    }
+  } else if (card.effect === 'heal6') {
+    p.hp = Math.min(p.maxHp, p.hp + 6);
+    log(`  ${p.hp} HP로 회복`, side);
+  } else if (card.effect === 'aoe2') {
+    state[target.side].field.forEach(m => m.hp -= 2);
+    log(`  적 필드 전체 2 피해`, side);
+  } else if (card.effect === 'poly' && target.target === 'minion') {
+    const m = state[target.side].field[target.idx];
+    if (m) { m.atk = 1; m.hp = 1; m.name = '양'; m.effect = ''; m.text = ''; log(`  ${m.name}을 양으로 변신`, side); }
+  } else if (card.effect === 'buff22' && target.target === 'minion') {
+    const m = state[target.side].field[target.idx];
+    if (m) { m.atk += 2; m.hp += 2; log(`  ${m.name} +2/+2`, side); }
+  }
+  cleanupField();
+  spellAnim(target.side, target.target === 'hero' ? -1 : target.idx);
+  checkOver();
+}
+
+function attackMinion(attackerSide, attacker, target) {
+  attacker.hp -= target.atk;
+  target.hp -= attacker.atk;
+  attacker.exhausted = true;
+  log(`${attackerSide==='you'?'내':'적'} ${attacker.name} → ${target.name} (${attacker.atk}/${attacker.hp}) vs (${target.atk}/${target.hp})`, attackerSide);
+  cleanupField();
+}
+
+function attackHero(attackerSide, attacker) {
+  const target = attackerSide === 'you' ? state.foe : state.you;
+  target.hp -= attacker.atk;
+  attacker.exhausted = true;
+  log(`${attackerSide==='you'?'내':'적'} ${attacker.name} → 적 영웅 ${attacker.atk} 피해`, attackerSide);
+  checkOver();
+}
+
+function cleanupField() {
+  state.you.field = state.you.field.filter(m => m.hp > 0);
+  state.foe.field = state.foe.field.filter(m => m.hp > 0);
+}
+
+function checkOver() {
+  if (state.you.hp <= 0) { state.over = true; gameOver('패배'); }
+  else if (state.foe.hp <= 0) { state.over = true; gameOver('승리'); }
+}
+
+function gameOver(result) {
+  document.getElementById('overlay-msg').textContent = result === '승리' ? '🎉 승리!' : '💀 패배';
+  document.getElementById('overlay').classList.add('show');
+  log('=== ' + result + ' ===', 'sys');
+}
+
+// ─── 인터랙션 ─────────────────────────────────────
+let targeting = null;  // {cardOrMinion, source:'hand'|'field', sourceIdx}
+
+function clickHandCard(idx) {
+  if (state.turn !== 'you' || state.over) return;
+  const card = state.you.hand[idx];
+  if (card.cost > state.you.mana) { log('마나 부족', 'sys'); return; }
+  if (card.type === 'minion') {
+    playMinion('you', card);
+    render();
+  } else if (card.type === 'spell') {
+    // 대상 필요한 주문
+    const needsTarget = ['dmg1','dmg6','poly','buff22'].includes(card.effect);
+    if (needsTarget) {
+      targeting = {card, source:'hand', sourceIdx: idx};
+      document.body.classList.add('targeting');
+      log(`대상 선택: ${card.name}`, 'sys');
+    } else {
+      // 자동 대상
+      let t;
+      if (card.effect === 'heal6') t = {side:'you', target:'hero'};
+      else if (card.effect === 'aoe2') t = {side:'foe'};
+      castSpell('you', card, t);
+      render();
+    }
+  }
+}
+
+function clickMinion(side, idx) {
+  if (state.over) return;
+  const m = state[side].field[idx];
+  if (!m) return;
+  if (targeting) {
+    castSpell('you', targeting.card, {side, target:'minion', idx});
+    targeting = null;
+    document.body.classList.remove('targeting');
+    render();
+    return;
+  }
+  if (state.turn !== 'you') return;
+  if (side === 'you') {
+    if (m.exhausted) { log('이번 턴 공격 불가', 'sys'); return; }
+    // 공격 모드 — 대상 선택
+    targeting = {minion:m, source:'field', sourceIdx: idx, attackMode: true};
+    document.body.classList.add('targeting');
+    log(`${m.name} 공격 대상 선택`, 'sys');
+  } else {
+    // 적 미니언 공격 대상
+    if (targeting && targeting.attackMode) {
+      // 도발 체크
+      const taunts = state.foe.field.filter(x => x.effect === 'taunt');
+      if (taunts.length && !taunts.includes(m)) { log('도발 미니언 먼저 처리', 'sys'); return; }
+      attackMinion('you', targeting.minion, m);
+      targeting = null;
+      document.body.classList.remove('targeting');
+      render();
+    }
+  }
+}
+
+function clickHero(side) {
+  if (state.over) return;
+  if (targeting && side === 'foe') {
+    if (targeting.attackMode) {
+      const taunts = state.foe.field.filter(x => x.effect === 'taunt');
+      if (taunts.length) { log('도발 먼저', 'sys'); return; }
+      attackHero('you', targeting.minion);
+    } else {
+      castSpell('you', targeting.card, {side:'foe', target:'hero'});
+    }
+    targeting = null;
+    document.body.classList.remove('targeting');
+    render();
+  }
+}
+
+function useHeroPower() {
+  if (state.turn !== 'you' || state.over) return;
+  const p = state.you;
+  if (p.mana < 2) { log('마나 부족', 'sys'); return; }
+  if (p.powerUsed) { log('영웅 능력 이번 턴 사용 완료', 'sys'); return; }
+  // 단순 — 대상 선택 후 1 피해
+  targeting = {power:true};
+  document.body.classList.add('targeting');
+  log('영웅 능력 대상 선택 (1피해)', 'sys');
+}
+
+function applyHeroPowerTarget(side, idx) {
+  const p = state.you;
+  p.mana -= 2; p.powerUsed = true;
+  if (idx === -1) state[side].hp -= 1;
+  else { const m = state[side].field[idx]; if (m) m.hp -= 1; }
+  log('영웅 능력 발동 — 1피해', 'you');
+  targeting = null;
+  document.body.classList.remove('targeting');
+  cleanupField();
+  checkOver();
+  render();
+}
+
+// 영웅 능력 — 대상 핸들러로 통합
+const _origClickMinion = clickMinion;
+const _origClickHero = clickHero;
+// 단순화: 영웅 능력 사용 후 다음 클릭은 그 대상
+function targetClickWrap(side, idx) {
+  if (targeting && targeting.power) {
+    applyHeroPowerTarget(side, idx);
+    return true;
+  }
+  return false;
+}
+
+// ─── 렌더 ─────────────────────────────────────────
+function render() {
+  document.getElementById('you-hp').textContent = state.you.hp;
+  document.getElementById('foe-hp').textContent = state.foe.hp;
+  document.getElementById('you-mana').textContent = state.you.mana;
+  document.getElementById('you-max-mana').textContent = state.you.maxMana;
+  document.getElementById('you-deck').textContent = state.you.deck.length;
+  document.getElementById('foe-deck').textContent = state.foe.deck.length;
+  document.getElementById('btn-end').classList.toggle('foe-turn', state.turn === 'foe');
+  document.getElementById('btn-end').textContent = state.turn === 'you' ? '턴 종료' : '적 턴...';
+
+  // 손
+  const hand = document.getElementById('hand');
+  hand.innerHTML = '';
+  state.you.hand.forEach((c, i) => {
+    const el = document.createElement('div');
+    el.className = 'hand-card' + (c.cost <= state.you.mana && state.turn === 'you' ? ' playable' : ' unplayable');
+    el.innerHTML = `
+      <div class="cost">${c.cost}</div>
+      <div class="name">${c.name}</div>
+      <div class="body">${c.text || ''}</div>
+      ${c.type === 'minion' ? `<div class="stats"><span class="atk">⚔️ ${c.atk}</span><span class="hp-num">❤️ ${c.hp}</span></div>` : '<div class="stats" style="justify-content:center;color:#88c0d0">🔮 주문</div>'}
+    `;
+    el.addEventListener('click', () => clickHandCard(i));
+    hand.appendChild(el);
+  });
+
+  // 필드
+  for (const side of ['you', 'foe']) {
+    const f = document.getElementById(side + '-field');
+    f.innerHTML = '';
+    state[side].field.forEach((m, i) => {
+      const el = document.createElement('div');
+      const cls = ['minion'];
+      if (side === 'you' && !m.exhausted) cls.push('can-attack');
+      if (m.exhausted) cls.push('exhausted');
+      if (m.effect === 'taunt') cls.push('taunt');
+      el.className = cls.join(' ');
+      el.innerHTML = `
+        <div class="name">${m.name}</div>
+        <div class="body">${m.text || ''}</div>
+        <div class="stats"><span class="atk">⚔️ ${m.atk}</span><span class="hp-num">❤️ ${m.hp}</span></div>
+      `;
+      el.addEventListener('click', () => {
+        if (targetClickWrap(side, i)) return;
+        clickMinion(side, i);
+      });
+      f.appendChild(el);
+    });
+  }
+
+  // 적 손 (뒷면)
+  const fh = document.getElementById('foe-hand');
+  fh.innerHTML = '';
+  for (let i = 0; i < state.foe.hand.length; i++) {
+    const el = document.createElement('div');
+    el.className = 'foe-card-back';
+    fh.appendChild(el);
+  }
+
+  // 영웅
+  document.getElementById('foe-hero').onclick = () => {
+    if (targetClickWrap('foe', -1)) return;
+    clickHero('foe');
+  };
+  document.getElementById('you-hero').onclick = () => {
+    if (targetClickWrap('you', -1)) return;
+  };
+}
+
+// ─── 로그 ─────────────────────────────────────────
+function log(msg, kind) {
+  const el = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = 'e' + (kind ? ' ' + kind : '');
+  d.textContent = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+function spellAnim(side, idx) {
+  // 시각 효과 — 간단
+}
+
+// ─── 컨트롤 ─────────────────────────────────────
+document.getElementById('btn-end').addEventListener('click', () => {
+  if (state.turn !== 'you' || state.over) return;
+  endTurn();
+});
+document.getElementById('btn-new').addEventListener('click', () => initGame());
+document.getElementById('overlay-btn').addEventListener('click', () => {
+  document.getElementById('overlay').classList.remove('show');
+  initGame();
+});
+document.getElementById('btn-help').addEventListener('click', () => {
+  alert('하스스톤 vanilla 짭\n\n· 30 HP / 마나 1~10 / 30덱(현재 20)\n· 손 카드 클릭 → 마나 충분하면 플레이\n· 미니언 클릭 → 공격 대상 선택\n· 도발 미니언 먼저 처리\n· 돌진 = 소환 턴에 공격 가능\n· 적 턴은 자동\n\n영웅: 김진우 vs 한우진');
+});
+document.getElementById('you-power').addEventListener('click', useHeroPower);
+
+initGame();
+</script>
+</body>
+</html>
