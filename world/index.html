@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>청산대천(靑山大天) — 한국풍 판타지 세계</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1612;color:#e2d5b8;font-family:'Noto Serif KR','Georgia',serif;line-height:1.7;min-height:100vh}
+.container{max-width:980px;margin:0 auto;padding:40px 20px}
+header{text-align:center;padding:60px 20px;background:linear-gradient(180deg,#2d2620 0%,#1a1612 100%);border-bottom:2px solid #fbbf24}
+h1{font-size:48px;color:#fbbf24;letter-spacing:8px;margin-bottom:16px}
+.subtitle{color:#a89878;font-size:14px;letter-spacing:4px}
+nav{display:flex;gap:18px;justify-content:center;padding:18px 0;background:#0f0d09;border-bottom:1px solid #3a2f25}
+nav a{color:#e2d5b8;text-decoration:none;padding:8px 18px;border:1px solid #3a2f25;border-radius:4px;transition:all 0.2s;font-size:13px}
+nav a:hover{background:#fbbf24;color:#1a1612;border-color:#fbbf24}
+h2{color:#fbbf24;font-size:24px;margin:40px 0 16px;border-left:4px solid #fbbf24;padding-left:14px}
+h3{color:#d4a857;font-size:18px;margin:24px 0 10px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-top:24px}
+.card{background:#2d2620;border:1px solid #3a2f25;border-radius:6px;padding:18px;cursor:pointer;transition:all 0.2s}
+.card:hover{border-color:#fbbf24;transform:translateY(-2px)}
+.card h4{color:#fbbf24;margin-bottom:6px}
+.card .meta{font-size:11px;color:#a89878;margin-bottom:8px}
+.card .desc{font-size:12px;line-height:1.5}
+.game-tile{display:flex;align-items:center;gap:14px;background:#2d2620;border:1px solid #3a2f25;border-radius:6px;padding:14px 18px;color:#e2d5b8;text-decoration:none;transition:all 0.2s}
+.game-tile:hover{border-color:#fbbf24;background:#3a2f25}
+.game-tile .icon{font-size:32px}
+.game-tile .title{font-weight:bold;color:#fbbf24}
+.game-tile .sub{font-size:11px;color:#a89878}
+.placeholder{padding:24px;background:#0f0d09;border:1px dashed #3a2f25;border-radius:6px;color:#7a6a55;font-style:italic;text-align:center}
+footer{text-align:center;padding:30px;color:#7a6a55;font-size:11px;border-top:1px solid #3a2f25;margin-top:60px}
+</style>
+</head>
+<body>
+<header>
+  <h1>청산대천</h1>
+  <div class="subtitle">靑 山 大 天</div>
+</header>
+<nav>
+  <a href="#world">세계관</a>
+  <a href="#characters">인물</a>
+  <a href="#games">게임</a>
+  <a href="#novel">소설</a>
+</nav>
+
+<div class="container">
+  <section id="world">
+    <h2>세계관</h2>
+    <div id="world-content" class="placeholder">세계관 로딩 중... (MSI 생성)</div>
+  </section>
+
+  <section id="characters">
+    <h2>인물</h2>
+    <div id="char-grid" class="card-grid">
+      <div class="placeholder" style="grid-column:1/-1">캐릭터 로딩 중... (MSI 생성)</div>
+    </div>
+  </section>
+
+  <section id="games">
+    <h2>게임</h2>
+    <div class="card-grid">
+      <a class="game-tile" href="/puzzle-games/sudoku_v2.html">
+        <div class="icon">🧩</div>
+        <div><div class="title">청산 스도쿠</div><div class="sub">패드/키마/터치 + 색상 힌트</div></div>
+      </a>
+      <a class="game-tile" href="/puzzle-games/minesweeper.html">
+        <div class="icon">💣</div>
+        <div><div class="title">청산 지뢰밭</div><div class="sub">5단계 위험도 + 안전셀</div></div>
+      </a>
+      <div class="game-tile" style="opacity:0.5">
+        <div class="icon">🃏</div>
+        <div><div class="title">청산 화투 <small>(준비중)</small></div><div class="sub">캐릭터 카드 적용</div></div>
+      </div>
+      <div class="game-tile" style="opacity:0.5">
+        <div class="icon">⚔️</div>
+        <div><div class="title">청산 카드 배틀 <small>(준비중)</small></div><div class="sub">하스스톤 짭 + 사기방지 카드</div></div>
+      </div>
+      <div class="game-tile" style="opacity:0.5">
+        <div class="icon">▦</div>
+        <div><div class="title">청산 네모로직 <small>(준비중)</small></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="novel">
+    <h2>소설 — 청산대천 25화</h2>
+    <div id="novel-list" class="placeholder">소설 1편 작성 중... (MSI 생성)</div>
+  </section>
+</div>
+
+<footer>
+  청산대천 · 한국풍 판타지 · 무료 제작 · powered by gouni44
+</footer>
+
+<script>
+// 데이터 로드 (MSI 생성 후 JSON 또는 텍스트로 채워짐)
+fetch('world.txt').then(r => r.ok ? r.text() : null).then(t => {
+  if (t) {
+    const html = t.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+      if (l.startsWith('**') && l.endsWith('**')) return '<h3>' + l.slice(2,-2) + '</h3>';
+      if (l.startsWith('**')) return '<p>' + l.replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#fbbf24">$1</strong>') + '</p>';
+      return '<p>' + l + '</p>';
+    }).join('');
+    document.getElementById('world-content').innerHTML = html;
+    document.getElementById('world-content').className = '';
+  }
+}).catch(() => {});
+
+fetch('characters.json').then(r => r.ok ? r.json() : null).then(arr => {
+  if (!arr) return;
+  const grid = document.getElementById('char-grid');
+  grid.innerHTML = '';
+  for (const c of arr) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `
+      <h4>${c.name} <small style="color:#a89878;font-weight:normal">${c.hanja || ''}</small></h4>
+      <div class="meta">${c.job || ''} · ${c.faction || ''}</div>
+      <div class="desc">
+        <div><strong style="color:#d4a857">성격</strong> ${c.personality || ''}</div>
+        <div style="margin-top:6px"><strong style="color:#d4a857">능력</strong> ${c.ability || ''}</div>
+        <div style="margin-top:6px"><strong style="color:#d4a857">카드</strong> ${c.card || ''}</div>
+        ${c.antifraud && c.antifraud !== '없음' ? '<div style="margin-top:6px;color:#fbbf24">🛡️ '+c.antifraud+'</div>' : ''}
+        <div style="margin-top:8px;font-style:italic;color:#a89878;font-size:11px">"${c.quote || ''}"</div>
+      </div>`;
+    grid.appendChild(el);
+  }
+}).catch(() => {});
+fetch('synopsis.txt').then(r => r.ok ? r.text() : null).then(t => {
+  if (!t) return;
+  const lines = t.split('\n').filter(l => /^\s*\d+\./.test(l));
+  const html = lines.slice(0, 25).map(l => '<div style="padding:6px 12px;border-bottom:1px solid #3a2f25"><span style="color:#fbbf24">'+l.match(/\d+\./)[0]+'</span> '+l.replace(/^\s*\d+\.\s*/, '').replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#d4a857">$1</strong>')+'</div>').join('');
+  document.getElementById('novel-list').innerHTML = html || '<div class="placeholder">시놉시스 파싱 실패</div>';
+  document.getElementById('novel-list').className = '';
+}).catch(() => {});
+</script>
+</body>
+</html>
