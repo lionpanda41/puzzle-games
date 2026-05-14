@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>에스카르타 던전 (D&D 풍)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{background:#000;color:#e2d5b8;font-family:'Noto Sans KR',sans-serif;overflow:hidden;height:100vh;touch-action:none;display:flex;justify-content:center}
+header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 14px;background:rgba(15,13,9,0.85);border-bottom:1px solid #5a4030;z-index:30;font-size:12px;align-items:center}
+header b{color:#fbbf24;font-size:14px;letter-spacing:2px}
+header .stats{display:flex;gap:14px}
+header button{background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:5px 10px;border-radius:4px;font-size:11px}
+
+canvas{display:block;background:#1a1612;max-height:100vh;max-width:100%}
+
+#hud{position:fixed;bottom:10px;left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;z-index:25;pointer-events:none}
+.pad{display:flex;gap:8px;pointer-events:auto}
+.btn{width:64px;height:64px;border-radius:50%;background:rgba(15,13,9,0.5);border:2px solid #5a4030;color:#fbbf24;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center}
+.btn.active{background:rgba(251,191,36,0.4);border-color:#fbbf24}
+.btn.atk{background:rgba(191,97,106,0.4);border-color:#bf616a;color:#fff;width:80px;height:80px;font-size:16px}
+.btn.jmp{background:rgba(120,180,90,0.4);border-color:#7ec564;color:#fff;width:80px;height:80px;font-size:16px}
+.btn.spell{background:rgba(170,100,200,0.4);border-color:#a64ac9;color:#fff;width:60px;height:60px;font-size:11px}
+
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;z-index:50;padding:20px;text-align:center}
+#overlay.show{display:flex}
+#overlay h2{color:#fbbf24;font-size:24px}
+#overlay button{background:#1d4ed8;color:#fff;border:0;padding:12px 22px;border-radius:6px;font-size:15px;cursor:pointer}
+.cls-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:380px}
+.cls{background:#2d2620;border:2px solid #5a4030;border-radius:6px;padding:10px;cursor:pointer;text-align:center}
+.cls.active{border-color:#fbbf24;background:#3a2f25}
+.cls img{width:80px;height:80px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 6px}
+.cls .nm{font-size:13px;color:#fbbf24;font-weight:bold}
+.cls .jc{font-size:10px;color:#a89878;margin-top:2px}
+.cls .stat{font-size:9px;color:#88c0d0;margin-top:4px}
+</style>
+</head>
+<body>
+<header>
+  <b>⚔ 던전</b>
+  <div class="stats">
+    <span id="char-info"></span>
+    <span>HP <b id="hp">100</b></span>
+    <span>점수 <b id="score">0</b></span>
+    <span>스테이지 <b id="stage">1</b></span>
+  </div>
+  <button id="btn-new">새</button>
+</header>
+
+<canvas id="cv" width="900" height="600"></canvas>
+
+<div id="hud">
+  <div class="pad">
+    <button class="btn" id="bL">◀</button>
+    <button class="btn" id="bR">▶</button>
+  </div>
+  <div class="pad">
+    <button class="btn spell" id="bSpell">마법</button>
+    <button class="btn jmp" id="bJump">점프</button>
+    <button class="btn atk" id="bAtk">공격</button>
+  </div>
+</div>
+
+<div id="overlay" class="show">
+  <h2>⚔ 에스카르타 던전</h2>
+  <p style="color:#a89878;font-size:13px">D&D 풍 횡스크롤 액션 · 직업 3종</p>
+  <div class="cls-picker" id="cls-picker"></div>
+  <p style="font-size:10px;color:#a89878">키: 좌우 이동 / Space 공격 / Z 점프 / X 마법<br>모바일: 화면 하단 버튼</p>
+  <button id="overlay-btn">시작</button>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+const CLASSES = [
+  {id:'01_hanyujin', name:'한유진', job:'무도가', stat:'ATK 10 / DEF 6 / 점프 강', atk: 12, def: 6, jp: -16, range: 50, weapon: 'sword'},
+  {id:'03_gardrin',  name:'가르드린', job:'전사',   stat:'ATK 9 / DEF 10 / 점프 약', atk: 9, def: 10, jp: -13, range: 45, weapon: 'axe'},
+  {id:'05_raven',    name:'레이븐',   job:'마법사', stat:'ATK 6 / DEF 4 / 마법 강',  atk: 6,  def: 4,  jp: -14, range: 220, weapon: 'staff', mage: true},
+];
+let picked = CLASSES[0];
+
+const imgs = {};
+for (const c of CLASSES) { imgs[c.id] = new Image(); imgs[c.id].src = `cards/${c.id}.png`; }
+const ENEMY_IDS = ['e01_orc_warrior', 'e07_imp', 'e10_berserker', 'e02_goblin_worker'];
+for (const id of ENEMY_IDS) { imgs[id] = new Image(); imgs[id].src = `cards/${id}.png`; }
+imgs['boss'] = new Image(); imgs['boss'].src = `cards/09_old_raven.png`;
+
+function pickerInit() {
+  const pk = document.getElementById('cls-picker');
+  pk.innerHTML = '';
+  CLASSES.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'cls' + (i===0?' active':'');
+    div.innerHTML = `<img src="cards/${c.id}.png"><div class="nm">${c.name}</div><div class="jc">${c.job}</div><div class="stat">${c.stat}</div>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.cls').forEach(p => p.classList.remove('active'));
+      div.classList.add('active');
+      picked = c;
+    });
+    pk.appendChild(div);
+  });
+}
+pickerInit();
+
+const GROUND_Y = H - 100;
+let state;
+
+function newGame() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('char-info').textContent = `${picked.name} (${picked.job})`;
+  state = {
+    p: {x: 100, y: GROUND_Y, vx: 0, vy: 0, hp: 100, maxHp: 100, w: 40, h: 60, facing: 1, attacking: 0, jumping: false, mana: 100},
+    enemies: [],
+    bullets: [],
+    particles: [],
+    cam: 0,
+    score: 0, stage: 1,
+    boss: null,
+    progress: 0,
+    spawnT: 0,
+    stageLen: 2400,
+    running: true,
+  };
+  requestAnimationFrame(tick);
+}
+
+const keys = {}, pad = {L:false, R:false, A:false, J:false, S:false};
+
+function tick() {
+  if (!state || !state.running) return;
+  const p = state.p;
+  // 이동
+  const left = keys['ArrowLeft'] || keys['a'] || pad.L;
+  const right = keys['ArrowRight'] || keys['d'] || pad.R;
+  p.vx = (left ? -4 : 0) + (right ? 4 : 0);
+  if (p.vx !== 0) p.facing = p.vx > 0 ? 1 : -1;
+  p.x += p.vx;
+  // 점프
+  if ((keys[' '] && false) || pad.J || keys['z'] || keys['Z']) {
+    if (!p.jumping) { p.vy = picked.jp; p.jumping = true; pad.J = false; }
+  }
+  p.vy += 0.8;  // 중력
+  p.y += p.vy;
+  if (p.y >= GROUND_Y) { p.y = GROUND_Y; p.vy = 0; p.jumping = false; }
+  // 공격
+  if ((keys[' '] || pad.A) && p.attacking <= 0) {
+    p.attacking = 18;
+    pad.A = false;
+    if (picked.mage) {
+      // 마법사: 원거리 투사체
+      state.bullets.push({x: p.x + p.facing*30, y: p.y - 30, vx: p.facing*8, vy: 0, dmg: picked.atk, life: 60, friend: true});
+    }
+  }
+  if (p.attacking > 0) p.attacking--;
+  // 마법
+  if ((keys['x'] || keys['X'] || pad.S) && p.mana >= 30) {
+    p.mana -= 30;
+    pad.S = false;
+    // 모든 적에게 피해
+    for (const e of state.enemies) e.hp -= 20;
+    state.particles.push({type:'flash', t: 20});
+  }
+  if (state.spawnT++ % 60 === 0) p.mana = Math.min(100, p.mana + 2);
+
+  // 카메라
+  p.x = Math.max(p.x, state.cam + 30);
+  state.cam = Math.max(state.cam, p.x - W/2);
+  state.cam = Math.min(state.cam, state.stageLen - W);
+  state.progress = state.cam;
+
+  // 적 스폰
+  if (state.spawnT % 90 === 0 && state.enemies.length < 4 && state.progress < state.stageLen - 400) {
+    const eid = ENEMY_IDS[Math.floor(Math.random()*ENEMY_IDS.length)];
+    state.enemies.push({id: eid, x: state.cam + W + 50, y: GROUND_Y, vx: -1.5, hp: 25, maxHp: 25, w: 36, h: 56, atk: 10, cd: 60});
+  }
+  // 보스 (스테이지 끝)
+  if (state.progress >= state.stageLen - W - 100 && !state.boss && !state.bossDefeated) {
+    state.boss = {id:'boss', x: state.cam + W - 80, y: GROUND_Y, vx: 0, hp: 200, maxHp: 200, w: 80, h: 90, atk: 18, cd: 90, boss: true};
+    state.enemies.push(state.boss);
+  }
+
+  // 적 AI
+  for (const e of state.enemies) {
+    const dx = p.x - e.x;
+    if (Math.abs(dx) > 50 && Math.abs(dx) < 600) {
+      e.vx = dx > 0 ? 1.5 : -1.5;
+    } else if (Math.abs(dx) <= 50) {
+      e.vx = 0;
+      e.cd--;
+      if (e.cd <= 0) {
+        e.cd = 60;
+        // 공격
+        if (Math.abs(p.y - e.y) < 40) {
+          p.hp -= Math.max(1, e.atk - picked.def/2);
+          state.particles.push({x: p.x, y: p.y-30, vx: -e.vx*2, vy: -2, life: 20, col: '#bf616a'});
+          if (p.hp <= 0) { gameOver(); return; }
+        }
+      }
+    }
+    e.x += e.vx;
+  }
+
+  // 공격 충돌 (근접)
+  if (p.attacking > 10 && !picked.mage) {
+    const hitX = p.x + p.facing * picked.range/2;
+    for (const e of state.enemies) {
+      const dx = Math.abs(e.x - p.x);
+      const dy = Math.abs(e.y - p.y);
+      if (dx < picked.range && dy < 60) {
+        if (!e._hit) {
+          e.hp -= picked.atk;
+          e._hit = 8;
+          state.particles.push({x: e.x, y: e.y-30, vx: p.facing*3, vy: -3, life: 20, col: '#fbbf24'});
+        }
+      }
+    }
+  }
+  // 투사체
+  state.bullets = state.bullets.filter(b => {
+    b.x += b.vx; b.y += b.vy; b.life--;
+    if (b.life <= 0) return false;
+    for (const e of state.enemies) {
+      if (Math.abs(b.x - e.x) < 30 && Math.abs(b.y - e.y) < 50) {
+        e.hp -= b.dmg;
+        state.particles.push({x: b.x, y: b.y, vx: 0, vy: -2, life: 15, col: '#a64ac9'});
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // 적 hit cooldown / death
+  for (const e of state.enemies) if (e._hit > 0) e._hit--;
+  state.enemies = state.enemies.filter(e => {
+    if (e.hp <= 0) {
+      state.score += e.boss ? 1000 : 100;
+      state.particles.push({x: e.x, y: e.y-30, vx: 0, vy: -3, life: 30, col: '#bf616a', text:'+'+(e.boss?1000:100)});
+      if (e.boss) { state.boss = null; state.bossDefeated = true; }
+      return false;
+    }
+    return true;
+  });
+
+  // 스테이지 클리어
+  if (state.bossDefeated && state.enemies.length === 0) {
+    win();
+    return;
+  }
+
+  // 파티클
+  state.particles = state.particles.filter(pr => {
+    if (pr.type === 'flash') { pr.t--; return pr.t > 0; }
+    pr.x += pr.vx; pr.y += pr.vy; pr.vy += 0.2; pr.life--;
+    return pr.life > 0;
+  });
+
+  draw();
+  updateHUD();
+  requestAnimationFrame(tick);
+}
+
+function drawSprite(img, x, y, w, h, facing, scale=1) {
+  if (!img || !img.complete) return;
+  const sx = x - state.cam - w/2, sy = y - h*scale;
+  ctx.save();
+  if (facing < 0) { ctx.scale(-1, 1); ctx.drawImage(img, -sx-w, sy, w, h*scale); }
+  else ctx.drawImage(img, sx, sy, w, h*scale);
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // 배경
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#1a1432');
+  grad.addColorStop(0.7, '#2d2620');
+  grad.addColorStop(1, '#0a0805');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  // 별
+  ctx.fillStyle = '#fff';
+  for (let i = 0; i < 20; i++) {
+    const x = (i*73 - state.cam*0.3) % W;
+    ctx.fillRect((x+W)%W, (i*47)%200, 1, 2);
+  }
+  // 지면
+  ctx.fillStyle = '#3a2520';
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.fillStyle = '#5a4030';
+  ctx.fillRect(0, GROUND_Y, W, 4);
+  // 기둥 (장식)
+  for (let i = 0; i < 8; i++) {
+    const x = i*350 - state.cam*0.7;
+    if (x > -50 && x < W+50) {
+      ctx.fillStyle = '#3a2f25';
+      ctx.fillRect(x, GROUND_Y - 200, 30, 200);
+      ctx.fillStyle = '#5a4030';
+      ctx.fillRect(x-5, GROUND_Y - 200, 40, 8);
+      ctx.fillRect(x-5, GROUND_Y - 20, 40, 8);
+    }
+  }
+  // 적
+  for (const e of state.enemies) {
+    drawSprite(imgs[e.id], e.x, e.y, e.boss?100:46, e.boss?110:60, e.x > state.p.x ? -1 : 1);
+    // HP 바
+    if (e.boss) {
+      ctx.fillStyle = '#bf616a';
+      ctx.fillRect(W/2-150, 70, 300, 8);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(W/2-150, 70, 300 * (e.hp / e.maxHp), 8);
+      ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('보스 — 올드 레이븐', W/2, 60);
+    } else {
+      const sx = e.x - state.cam;
+      ctx.fillStyle = '#bf616a';
+      ctx.fillRect(sx-20, e.y - 70, 40, 4);
+      ctx.fillStyle = '#7ec564';
+      ctx.fillRect(sx-20, e.y - 70, 40 * (e.hp / e.maxHp), 4);
+    }
+    if (e._hit > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      drawSprite(imgs[e.id], e.x, e.y, e.boss?100:46, e.boss?110:60, e.x > state.p.x ? -1 : 1);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+  // 플레이어
+  const p = state.p;
+  drawSprite(imgs[picked.id], p.x, p.y, p.w, p.h, p.facing);
+  // 공격 이펙트
+  if (p.attacking > 10 && !picked.mage) {
+    ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    const ax = p.x - state.cam + p.facing * 30;
+    ctx.arc(ax, p.y - 30, picked.range/2, 0, Math.PI, p.facing < 0);
+    ctx.stroke();
+  }
+  // 투사체
+  for (const b of state.bullets) {
+    ctx.fillStyle = '#a64ac9';
+    ctx.beginPath(); ctx.arc(b.x - state.cam, b.y, 8, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.stroke();
+  }
+  // 파티클
+  for (const pr of state.particles) {
+    if (pr.type === 'flash') {
+      ctx.fillStyle = `rgba(255,255,200,${pr.t/20*0.5})`;
+      ctx.fillRect(0,0,W,H);
+      continue;
+    }
+    ctx.fillStyle = pr.col;
+    ctx.globalAlpha = pr.life/30;
+    if (pr.text) {
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(pr.text, pr.x - state.cam, pr.y);
+    } else {
+      ctx.fillRect(pr.x - state.cam - 2, pr.y - 2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // 진행도
+  ctx.fillStyle = '#5a4030';
+  ctx.fillRect(20, 50, 200, 6);
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillRect(20, 50, 200 * (state.progress / state.stageLen), 6);
+  // 마나
+  ctx.fillStyle = '#3a2520';
+  ctx.fillRect(20, 62, 100, 4);
+  ctx.fillStyle = '#88c0d0';
+  ctx.fillRect(20, 62, p.mana, 4);
+}
+
+function updateHUD() {
+  document.getElementById('hp').textContent = Math.max(0, Math.floor(state.p.hp));
+  document.getElementById('score').textContent = state.score;
+  document.getElementById('stage').textContent = state.stage;
+}
+
+function gameOver() {
+  state.running = false;
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `<h2>💀 사망</h2><img src="cards/${picked.id}.png" style="width:160px;border-radius:8px;opacity:0.7"><p style="color:#a89878">최종 ${state.score} · 스테이지 ${state.stage}</p><button onclick="location.reload()">다시</button>`;
+  ov.classList.add('show');
+}
+function win() {
+  state.running = false;
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `<h2>🏆 스테이지 클리어!</h2><img src="cards/${picked.id}.png" style="width:160px;border-radius:8px"><p style="color:#fbbf24">점수 ${state.score} · 올드 레이븐 격파</p><button onclick="location.reload()">다시</button>`;
+  ov.classList.add('show');
+}
+
+document.addEventListener('keydown', e => { keys[e.key] = true; });
+document.addEventListener('keyup',   e => { keys[e.key] = false; });
+
+function bindBtn(id, key) {
+  const el = document.getElementById(id);
+  const on = (e) => { pad[key] = true; el.classList.add('active'); e.preventDefault?.(); };
+  const off = () => { pad[key] = false; el.classList.remove('active'); };
+  el.addEventListener('touchstart', on, {passive:false});
+  el.addEventListener('touchend',   off);
+  el.addEventListener('mousedown',  on);
+  el.addEventListener('mouseup',    off);
+  el.addEventListener('mouseleave', off);
+}
+bindBtn('bL', 'L'); bindBtn('bR', 'R'); bindBtn('bAtk', 'A'); bindBtn('bJump', 'J'); bindBtn('bSpell', 'S');
+
+document.getElementById('overlay-btn').addEventListener('click', newGame);
+document.getElementById('btn-new').addEventListener('click', () => location.reload());
+</script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>에스카르타 런앤건 (메탈슬러그 풍)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{background:#000;color:#e2d5b8;font-family:'Noto Sans KR',sans-serif;overflow:hidden;height:100vh;touch-action:none;display:flex;justify-content:center}
+header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 14px;background:rgba(15,13,9,0.85);border-bottom:1px solid #5a4030;z-index:30;font-size:12px;align-items:center}
+header b{color:#fbbf24;font-size:14px;letter-spacing:2px}
+header .stats{display:flex;gap:14px}
+header button{background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:5px 10px;border-radius:4px;font-size:11px}
+canvas{display:block;background:#1a1612;max-height:100vh;max-width:100%}
+
+#hud{position:fixed;bottom:10px;left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;z-index:25;pointer-events:none}
+.pad{display:flex;gap:8px;pointer-events:auto}
+.btn{width:60px;height:60px;border-radius:50%;background:rgba(15,13,9,0.5);border:2px solid #5a4030;color:#fbbf24;font-size:14px;font-weight:bold;display:flex;align-items:center;justify-content:center}
+.btn.active{background:rgba(251,191,36,0.4);border-color:#fbbf24}
+.btn.atk{background:rgba(191,97,106,0.4);border-color:#bf616a;color:#fff;width:80px;height:80px;font-size:14px}
+.btn.jmp{background:rgba(120,180,90,0.4);border-color:#7ec564;color:#fff;width:80px;height:80px;font-size:14px}
+.btn.gren{background:rgba(170,100,200,0.4);border-color:#a64ac9;color:#fff;width:60px;height:60px;font-size:11px}
+
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;z-index:50;padding:20px;text-align:center}
+#overlay.show{display:flex}
+#overlay h2{color:#fbbf24;font-size:24px}
+#overlay button{background:#1d4ed8;color:#fff;border:0;padding:12px 22px;border-radius:6px;font-size:15px;cursor:pointer}
+.cls-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:380px}
+.cls{background:#2d2620;border:2px solid #5a4030;border-radius:6px;padding:10px;cursor:pointer;text-align:center}
+.cls.active{border-color:#fbbf24;background:#3a2f25}
+.cls img{width:80px;height:80px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 6px}
+.cls .nm{font-size:13px;color:#fbbf24;font-weight:bold}
+.cls .jc{font-size:10px;color:#a89878;margin-top:2px}
+</style>
+</head>
+<body>
+<header>
+  <b>💥 런앤건</b>
+  <div class="stats">
+    <span id="char-info"></span>
+    <span>HP <b id="hp">100</b></span>
+    <span>점수 <b id="score">0</b></span>
+    <span>탄 <b id="weapon">기본</b></span>
+  </div>
+  <button id="btn-new">새</button>
+</header>
+
+<canvas id="cv" width="900" height="600"></canvas>
+
+<div id="hud">
+  <div class="pad">
+    <button class="btn" id="bL">◀</button>
+    <button class="btn" id="bR">▶</button>
+  </div>
+  <div class="pad">
+    <button class="btn gren" id="bGren">수류탄</button>
+    <button class="btn jmp" id="bJump">점프</button>
+    <button class="btn atk" id="bAtk">사격</button>
+  </div>
+</div>
+
+<div id="overlay" class="show">
+  <h2>💥 에스카르타 런앤건</h2>
+  <p style="color:#a89878;font-size:13px">메탈슬러그 풍 횡스크롤 슈팅</p>
+  <div class="cls-picker" id="cls-picker"></div>
+  <p style="font-size:10px;color:#a89878">좌우 이동 / Space 사격 (꾹) / Z 점프 / X 수류탄</p>
+  <button id="overlay-btn">시작</button>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+const CLASSES = [
+  {id:'01_hanyujin', name:'한유진', job:'에이스',   col:'#88c0d0', rate: 5, dmg: 8},
+  {id:'04_lion',     name:'라이언', job:'전선병',   col:'#fbbf24', rate: 4, dmg: 10},
+  {id:'06_kacy',     name:'케이시', job:'중화기병', col:'#bf616a', rate: 8, dmg: 15},
+];
+let picked = CLASSES[0];
+
+const imgs = {};
+[...CLASSES, {id:'e01_orc_warrior'}, {id:'e07_imp'}, {id:'e10_berserker'}, {id:'e02_goblin_worker'}, {id:'09_old_raven'}].forEach(c => {
+  imgs[c.id] = new Image(); imgs[c.id].src = `cards/${c.id}.png`;
+});
+
+function pickerInit() {
+  const pk = document.getElementById('cls-picker');
+  pk.innerHTML = '';
+  CLASSES.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'cls' + (i===0?' active':'');
+    div.innerHTML = `<img src="cards/${c.id}.png"><div class="nm">${c.name}</div><div class="jc">${c.job}</div>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.cls').forEach(p => p.classList.remove('active'));
+      div.classList.add('active');
+      picked = c;
+    });
+    pk.appendChild(div);
+  });
+}
+pickerInit();
+
+const GROUND_Y = H - 100;
+let state;
+const keys = {}, pad = {L:false, R:false, A:false, J:false, G:false};
+
+function newGame() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('char-info').textContent = `${picked.name} (${picked.job})`;
+  state = {
+    p: {x: 100, y: GROUND_Y, vx: 0, vy: 0, hp: 100, w:36, h:56, facing:1, jumping:false, cd:0, weapon:'기본', wAmmo: 0, grenades: 3},
+    enemies: [],
+    bullets: [],     // 아군
+    eBullets: [],    // 적
+    particles: [],
+    pickups: [],
+    cam: 0, score: 0,
+    spawnT: 0,
+    stageLen: 3000,
+    bossDefeated: false,
+    boss: null,
+    running: true,
+  };
+  requestAnimationFrame(tick);
+}
+
+function tick() {
+  if (!state || !state.running) return;
+  const p = state.p;
+  const left = keys['ArrowLeft'] || keys['a'] || pad.L;
+  const right = keys['ArrowRight'] || keys['d'] || pad.R;
+  p.vx = (left ? -4 : 0) + (right ? 4 : 0);
+  if (p.vx !== 0) p.facing = p.vx > 0 ? 1 : -1;
+  p.x += p.vx;
+  // 점프
+  if (pad.J || keys['z'] || keys['Z']) {
+    if (!p.jumping) { p.vy = -14; p.jumping = true; pad.J = false; }
+  }
+  p.vy += 0.7;
+  p.y += p.vy;
+  if (p.y >= GROUND_Y) { p.y = GROUND_Y; p.vy = 0; p.jumping = false; }
+  // 사격
+  if ((keys[' '] || pad.A) && p.cd <= 0) {
+    p.cd = picked.rate;
+    const dmg = p.wAmmo > 0 ? picked.dmg * 2 : picked.dmg;
+    state.bullets.push({x: p.x + p.facing*22, y: p.y - 32, vx: p.facing*10, vy: 0, dmg, life: 80});
+    if (p.weapon === '샷건' && p.wAmmo > 0) {
+      state.bullets.push({x: p.x + p.facing*22, y: p.y - 38, vx: p.facing*10, vy: -1.5, dmg, life: 70});
+      state.bullets.push({x: p.x + p.facing*22, y: p.y - 26, vx: p.facing*10, vy: 1.5, dmg, life: 70});
+    }
+    if (p.wAmmo > 0) {
+      p.wAmmo--;
+      if (p.wAmmo <= 0) { p.weapon = '기본'; updateHUD(); }
+    }
+  }
+  if (p.cd > 0) p.cd--;
+  // 수류탄
+  if ((keys['x'] || keys['X'] || pad.G) && p.grenades > 0) {
+    pad.G = false; keys['x'] = false; keys['X'] = false;
+    p.grenades--;
+    state.bullets.push({x: p.x, y: p.y-50, vx: p.facing*6, vy: -8, dmg: 50, life:60, grenade: true, gravity: true});
+  }
+
+  // 카메라
+  state.cam = Math.max(state.cam, p.x - 250);
+  state.cam = Math.min(state.cam, state.stageLen - W);
+  p.x = Math.max(p.x, state.cam + 30);
+  p.x = Math.min(p.x, state.cam + W - 30);
+
+  // 적 스폰
+  if (state.spawnT++ % 80 === 0 && state.enemies.length < 5 && state.cam < state.stageLen - 600) {
+    const eid = ['e01_orc_warrior','e07_imp','e10_berserker','e02_goblin_worker'][Math.floor(Math.random()*4)];
+    state.enemies.push({id: eid, x: state.cam + W + 40, y: GROUND_Y, vx: -1.2, hp: 25, maxHp: 25, w: 36, h: 56, cd: 60});
+  }
+  // 보스
+  if (state.cam >= state.stageLen - W - 100 && !state.boss && !state.bossDefeated) {
+    state.boss = {id:'09_old_raven', x: state.cam + W - 80, y: GROUND_Y, vx: 0, hp: 300, maxHp: 300, w: 90, h: 100, cd: 30, boss: true};
+    state.enemies.push(state.boss);
+  }
+
+  // 적 AI
+  for (const e of state.enemies) {
+    e.cd--;
+    const dx = p.x - e.x;
+    if (Math.abs(dx) > 200) e.vx = dx > 0 ? 1.5 : -1.5;
+    else { e.vx = 0; if (e.cd <= 0) { e.cd = e.boss ? 30 : 100; state.eBullets.push({x: e.x, y: e.y-30, vx: dx>0?5:-5, vy: -2, life: 80}); if(e.boss){state.eBullets.push({x: e.x, y: e.y-30, vx: dx>0?5:-5, vy: 2, life: 80});} } }
+    e.x += e.vx;
+  }
+
+  // 아군 총알
+  state.bullets = state.bullets.filter(b => {
+    b.x += b.vx;
+    if (b.gravity) { b.vy += 0.3; b.y += b.vy; }
+    b.life--;
+    if (b.life <= 0) {
+      if (b.grenade) {
+        // 폭발
+        for (const e of state.enemies) {
+          if (Math.abs(e.x - b.x) < 80 && Math.abs(e.y - b.y) < 100) e.hp -= b.dmg;
+        }
+        for (let i=0;i<15;i++) state.particles.push({x:b.x,y:b.y,vx:(Math.random()-0.5)*8,vy:-Math.random()*6,life:30,col:'#fbbf24'});
+      }
+      return false;
+    }
+    for (const e of state.enemies) {
+      if (Math.abs(b.x - e.x) < 26 && Math.abs(b.y - e.y) < 50) {
+        e.hp -= b.dmg;
+        state.particles.push({x:b.x,y:b.y,vx:b.vx*0.2,vy:-2,life:15,col:picked.col});
+        if (!b.grenade) return false;
+      }
+    }
+    return true;
+  });
+
+  // 적 총알
+  state.eBullets = state.eBullets.filter(b => {
+    b.x += b.vx; b.y += b.vy; b.vy += 0.05; b.life--;
+    if (b.life <= 0) return false;
+    if (Math.abs(b.x - p.x) < 20 && Math.abs(b.y - p.y) < 50 && p.y < GROUND_Y - 5 ? false : Math.abs(b.x - p.x) < 20 && Math.abs(b.y - (p.y-30)) < 30) {
+      p.hp -= 8;
+      state.particles.push({x:p.x,y:p.y-30,vx:0,vy:-2,life:20,col:'#bf616a'});
+      if (p.hp <= 0) { gameOver(); }
+      return false;
+    }
+    return true;
+  });
+
+  // 적 사망 + 픽업 드랍
+  state.enemies = state.enemies.filter(e => {
+    if (e.hp <= 0) {
+      state.score += e.boss ? 2000 : 100;
+      state.particles.push({x:e.x,y:e.y-30,vx:0,vy:-3,life:25,col:'#bf616a',text:'+'+(e.boss?2000:100)});
+      if (e.boss) { state.boss = null; state.bossDefeated = true; }
+      // 20% 확률 픽업 (보스 100%)
+      if (e.boss || Math.random() < 0.2) {
+        const kinds = ['샷건', '머신건', 'HP'];
+        state.pickups.push({x: e.x, y: GROUND_Y - 20, kind: kinds[Math.floor(Math.random()*kinds.length)]});
+      }
+      return false;
+    }
+    return true;
+  });
+
+  // 픽업
+  state.pickups = state.pickups.filter(pk => {
+    if (Math.abs(pk.x - p.x) < 30 && Math.abs(pk.y - p.y) < 60) {
+      if (pk.kind === 'HP') { p.hp = Math.min(100, p.hp + 30); state.score += 50; }
+      else { p.weapon = pk.kind; p.wAmmo = 40; updateHUD(); }
+      return false;
+    }
+    return true;
+  });
+
+  // 파티클
+  state.particles = state.particles.filter(pr => {
+    pr.x += pr.vx; pr.y += pr.vy; pr.vy += 0.2; pr.life--;
+    return pr.life > 0;
+  });
+
+  // 클리어
+  if (state.bossDefeated && state.enemies.length === 0 && state.pickups.length === 0) {
+    win();
+    return;
+  }
+
+  draw();
+  updateHUD();
+  requestAnimationFrame(tick);
+}
+
+function drawSprite(img, x, y, w, h, facing) {
+  if (!img || !img.complete) return;
+  const sx = x - state.cam - w/2, sy = y - h;
+  ctx.save();
+  if (facing < 0) { ctx.scale(-1, 1); ctx.drawImage(img, -sx-w, sy, w, h); }
+  else ctx.drawImage(img, sx, sy, w, h);
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // 배경 — 황무지
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#5a4030');
+  grad.addColorStop(0.6, '#3a2520');
+  grad.addColorStop(1, '#1a1612');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  // 산 (파랄랙스)
+  ctx.fillStyle = '#2d2620';
+  for (let i = 0; i < 6; i++) {
+    const x = i*250 - state.cam*0.4;
+    ctx.beginPath();
+    ctx.moveTo((x+W*2)%(W*2)-W*0.5, GROUND_Y);
+    ctx.lineTo((x+W*2)%(W*2)-W*0.5 + 120, GROUND_Y - 150);
+    ctx.lineTo((x+W*2)%(W*2)-W*0.5 + 240, GROUND_Y);
+    ctx.fill();
+  }
+  // 지면
+  ctx.fillStyle = '#3a2520';
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.fillStyle = '#5a4030';
+  ctx.fillRect(0, GROUND_Y, W, 4);
+  // 적
+  for (const e of state.enemies) {
+    drawSprite(imgs[e.id], e.x, e.y, e.boss?100:42, e.boss?120:60, e.x > state.p.x ? -1 : 1);
+    if (e.boss) {
+      ctx.fillStyle = '#bf616a';
+      ctx.fillRect(W/2-150, 70, 300, 8);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(W/2-150, 70, 300 * (e.hp / e.maxHp), 8);
+      ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('보스 — 흑룡 올드 레이븐', W/2, 60);
+    }
+  }
+  // 픽업
+  for (const pk of state.pickups) {
+    const sx = pk.x - state.cam;
+    ctx.fillStyle = pk.kind === 'HP' ? '#7ec564' : '#fbbf24';
+    ctx.fillRect(sx-12, pk.y-20, 24, 20);
+    ctx.strokeStyle = '#fff'; ctx.strokeRect(sx-12, pk.y-20, 24, 20);
+    ctx.fillStyle = '#000'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(pk.kind, sx, pk.y - 6);
+  }
+  // 플레이어
+  const p = state.p;
+  drawSprite(imgs[picked.id], p.x, p.y, p.w, p.h, p.facing);
+  // 총
+  ctx.strokeStyle = '#444'; ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(p.x - state.cam, p.y - 32);
+  ctx.lineTo(p.x - state.cam + p.facing*22, p.y - 32);
+  ctx.stroke();
+  // 총알 (아군)
+  for (const b of state.bullets) {
+    if (b.grenade) {
+      ctx.fillStyle = '#a64ac9';
+      ctx.beginPath(); ctx.arc(b.x - state.cam, b.y, 6, 0, Math.PI*2); ctx.fill();
+    } else {
+      ctx.fillStyle = picked.col;
+      ctx.fillRect(b.x - state.cam, b.y, 12, 3);
+    }
+  }
+  // 총알 (적)
+  ctx.fillStyle = '#ff4040';
+  for (const b of state.eBullets) {
+    ctx.beginPath(); ctx.arc(b.x - state.cam, b.y, 4, 0, Math.PI*2); ctx.fill();
+  }
+  // 파티클
+  for (const pr of state.particles) {
+    if (pr.text) {
+      ctx.fillStyle = pr.col; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+      ctx.globalAlpha = pr.life/30;
+      ctx.fillText(pr.text, pr.x - state.cam, pr.y);
+    } else {
+      ctx.fillStyle = pr.col; ctx.globalAlpha = pr.life/30;
+      ctx.fillRect(pr.x - state.cam - 2, pr.y - 2, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // 진행도
+  ctx.fillStyle = '#5a4030';
+  ctx.fillRect(20, 50, 200, 6);
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillRect(20, 50, 200 * (state.cam / state.stageLen), 6);
+  // 수류탄 표시
+  ctx.fillStyle = '#a64ac9'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('🧨 ×' + p.grenades, 20, 80);
+}
+
+function updateHUD() {
+  document.getElementById('hp').textContent = Math.max(0, Math.floor(state.p.hp));
+  document.getElementById('score').textContent = state.score;
+  document.getElementById('weapon').textContent = state.p.weapon + (state.p.wAmmo>0?' ('+state.p.wAmmo+')':'');
+}
+
+function gameOver() {
+  state.running = false;
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `<h2>💀 전사</h2><img src="cards/${picked.id}.png" style="width:160px;border-radius:8px;opacity:0.7"><p style="color:#a89878">최종 ${state.score}</p><button onclick="location.reload()">다시</button>`;
+  ov.classList.add('show');
+}
+function win() {
+  state.running = false;
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `<h2>🏆 미션 클리어</h2><img src="cards/${picked.id}.png" style="width:160px;border-radius:8px"><p style="color:#fbbf24">점수 ${state.score}</p><button onclick="location.reload()">다시</button>`;
+  ov.classList.add('show');
+}
+
+document.addEventListener('keydown', e => { keys[e.key] = true; });
+document.addEventListener('keyup',   e => { keys[e.key] = false; });
+
+function bindBtn(id, key, oneShot=false) {
+  const el = document.getElementById(id);
+  const on = (e) => { pad[key] = true; el.classList.add('active'); e.preventDefault?.(); };
+  const off = () => { pad[key] = false; el.classList.remove('active'); };
+  el.addEventListener('touchstart', on, {passive:false});
+  el.addEventListener('touchend',   off);
+  el.addEventListener('mousedown',  on);
+  el.addEventListener('mouseup',    off);
+  el.addEventListener('mouseleave', off);
+}
+bindBtn('bL','L'); bindBtn('bR','R'); bindBtn('bAtk','A'); bindBtn('bJump','J'); bindBtn('bGren','G');
+
+document.getElementById('overlay-btn').addEventListener('click', newGame);
+document.getElementById('btn-new').addEventListener('click', () => location.reload());
+</script>
+</body>
+</html>
