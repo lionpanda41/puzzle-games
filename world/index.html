@@ -113,7 +113,9 @@ fetch('characters.json').then(r => r.ok ? r.json() : null).then(arr => {
   for (const c of arr) {
     const el = document.createElement('div');
     el.className = 'card';
+    const baseName = c.name.split('(')[0].trim();
     el.innerHTML = `
+      <div style="text-align:center;margin-bottom:10px"><img src="characters/${baseName}.png" alt="${baseName}" style="width:140px;height:140px;object-fit:contain;border-radius:6px;background:#0f0d09" onerror="this.style.display='none'"></div>
       <h4>${c.name} <small style="color:#a89878;font-weight:normal">${c.hanja || ''}</small></h4>
       <div class="meta">${c.job || ''} · ${c.faction || ''}</div>
       <div class="desc">
