@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>지뢰찾기 (분석모드)</title>
+<style>
+:root{
+  --bg:#2e3440;
+  --cell:#3b4252;
+  --cell-open:#4c566a;
+  --grid:#1a2230;
+  --frame:#fbbf24;
+  --given:#d8dee9;
+  --highlight:#a78bfa;
+  --selected:#ebcb8b;
+  --mine:#bf616a;
+  --flag:#fbbf24;
+  --safe:#7ea564;
+  --n1:#88c0d0;
+  --n2:#7ea564;
+  --n3:#ebcb8b;
+  --n4:#d08770;
+  --n5:#bf616a;
+  --n6:#b48ead;
+  --n7:#88c0d0;
+  --n8:#eceff4;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:#eee;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;user-select:none;overflow-x:hidden;overflow-y:auto;padding:4px}
+#top{display:flex;gap:6px;margin:8px 0;align-items:center;flex-wrap:wrap;justify-content:center;max-width:96vw}
+#top button{background:#1e293b;color:#94a3b8;padding:6px 12px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
+#top button:hover{background:#334155;color:#e2e8f0}
+#top button.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+#info{font-size:13px;color:#cbd5e1;font-weight:bold;display:flex;gap:12px;align-items:center}
+#info .mines{color:#fca5a5}
+#info .timer{color:#e2e8f0}
+#info .best{color:#94a3b8;font-size:11px}
+#face{font-size:24px;cursor:pointer;background:#1e293b;border:1px solid #475569;width:42px;height:42px;border-radius:6px;display:flex;align-items:center;justify-content:center}
+#board-wrap{margin-top:4px;display:flex;justify-content:center}
+#board{display:grid;background:var(--grid);gap:2px;border:5px solid var(--frame);border-radius:4px;box-sizing:border-box;touch-action:none}
+.cell{
+  background-color:var(--cell);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-weight:bold;
+  transition:background-color .1s;position:relative;overflow:hidden;
+  font-family:'Arial Black','Helvetica',sans-serif;
+}
+.cell.open{background-color:var(--cell-open)}
+.cell.flag::after{content:'🚩';font-size:0.7em}
+.cell.mine::after{content:'💣';font-size:0.7em}
+.cell.mine.exploded{background-color:var(--mine)!important;animation:explode 0.4s}
+@keyframes explode{0%{transform:scale(1)}50%{transform:scale(1.3);filter:brightness(2)}100%{transform:scale(1)}}
+.cell.wrong-flag::after{content:'❌';font-size:0.7em}
+.cell.n1{color:var(--n1)}
+.cell.n2{color:var(--n2)}
+.cell.n3{color:var(--n3)}
+.cell.n4{color:var(--n4)}
+.cell.n5{color:var(--n5)}
+.cell.n6{color:var(--n6)}
+.cell.n7{color:var(--n7)}
+.cell.n8{color:var(--n8)}
+.cell.selected{outline:5px solid #fff7d6;outline-offset:-5px;z-index:10;animation:blink-sel 0.7s ease-in-out infinite}
+@keyframes blink-sel{0%,100%{outline-color:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,0.4)}50%{outline-color:#fff7d6;box-shadow:0 0 16px rgba(251,191,36,0.85)}}
+.cell .row-overlay,.cell .col-overlay{position:absolute;inset:0;pointer-events:none;background:rgba(167,139,250,0.55);z-index:1}
+.cell.safe-cell{background-color:var(--safe)!important;z-index:5;animation:blink-safe 1.5s ease-in-out infinite}
+@keyframes blink-safe{0%,100%{background-color:#7ea564}50%{background-color:#5e7d4a}}
+.cell.safe-cell .row-overlay,.cell.safe-cell .col-overlay{display:none!important}
+.cell.diff-easy{background-color:rgba(94,125,74,0.45)}
+.cell.diff-mid{background-color:rgba(76,86,106,0.45)}
+.cell.diff-hard{background-color:rgba(138,68,72,0.45)}
+#actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center;align-items:center;max-width:96vw}
+#actions button{background:#1e293b;color:#94a3b8;padding:6px 14px;border:1px solid #334155;cursor:pointer;font-size:12px;font-family:monospace;border-radius:4px}
+#actions button:hover{background:#334155;color:#e2e8f0}
+#actions button.active{background:#fbbf24;color:#111827;border-color:#fbbf24}
+#actions .toggle-btn{background:#0f1e2e;border-color:#1e3a52}
+#actions .action-btn{background:#1e293b;border-color:#475569;color:#cbd5e1}
+#actions .action-btn.primary{background:#1d4ed8;color:#fff;border-color:#3b82f6}
+#actions .action-btn.primary:hover{background:#2563eb}
+#actions .mode-btn{padding:6px 10px;font-size:16px}
+#actions .mode-btn.active{background:#fbbf24;color:#111827;border-color:#fbbf24}
+#actions .btn-sep{width:1px;height:24px;background:#475569;margin:0 4px}
+#toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(30,41,59,0.95);border:1px solid #3b82f6;color:#e2e8f0;padding:10px 16px;border-radius:8px;z-index:50;font-size:12px;line-height:1.5;display:none;max-width:90vw}
+#help{position:fixed;top:50%;right:20px;transform:translateY(-50%);background:rgba(15,23,42,0.95);padding:14px 18px;border-radius:8px;border:1px solid #475569;font-size:11px;color:#cbd5e1;line-height:1.7;z-index:5;max-width:300px;max-height:80vh;overflow-y:auto}
+#help.hidden{display:none}
+#help b{color:#fbbf24}
+#padmap-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.97);border:2px solid #fbbf24;border-radius:10px;padding:18px 24px;z-index:30;font-size:12px;color:#cbd5e1;line-height:1.6;min-width:320px;max-width:90vw;max-height:90vh;overflow-y:auto}
+#padmap-modal.hidden{display:none}
+#pad-status{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);font-size:12px;color:#fbbf24;background:rgba(15,23,42,0.92);padding:6px 12px;border-radius:6px;max-width:96vw;font-family:monospace;line-height:1.4;z-index:100;border:1px solid #fbbf24}
+@media (max-width:768px){
+  #help{display:none}
+}
+</style>
+</head>
+<body>
+<div id="top">
+  <button id="btn-easy">쉬움 9×9</button>
+  <button id="btn-medium">중간 16×16</button>
+  <button id="btn-hard">어려움 24×16</button>
+  <button id="face" title="새 게임">🙂</button>
+  <span id="info">
+    <span class="mines">💣 <span id="mine-count">10</span></span>
+    <span class="timer">⏱️ <span id="timer">000</span></span>
+    <span class="best" id="best">🏆 --</span>
+  </span>
+</div>
+<div id="toast"></div>
+<div id="board-wrap"><div id="board"></div></div>
+<div id="actions">
+  <button id="btn-line" class="toggle-btn">라인 OFF</button>
+  <button id="btn-color" class="toggle-btn">위험 OFF</button>
+  <button id="btn-safe" class="toggle-btn">안전셀 OFF</button>
+  <span class="btn-sep" aria-hidden="true"></span>
+  <button id="btn-new" class="action-btn primary">새문제</button>
+  <button id="btn-help" class="action-btn">?</button>
+  <span class="btn-sep" aria-hidden="true"></span>
+  <button id="btn-mode-mouse" class="action-btn mode-btn" title="키마">🖱️</button>
+  <button id="btn-mode-pad" class="action-btn mode-btn" title="패드">🎮</button>
+  <button id="btn-mode-touch" class="action-btn mode-btn" title="터치">📱</button>
+</div>
+
+<div id="help" class="hidden">
+  <div style="margin-bottom:6px"><b>🎯 지뢰찾기</b></div>
+  <div>좌클릭 — 셀 열기</div>
+  <div>우클릭 — 깃발 🚩 토글</div>
+  <div>가운데클릭/더블클릭 — 코드 (숫자=주변깃발 시 인접 셀 열기)</div>
+  <div>휠 — 깃발 토글</div>
+  <div style="margin-top:8px"><b>⌨️ 키보드</b></div>
+  <div>방향키 — 셀 이동</div>
+  <div>Space — 열기 / F — 깃발</div>
+  <div>D — 코드</div>
+  <div>N — 새 게임</div>
+  <div style="margin-top:8px"><b>🎮 패드</b></div>
+  <div>스틱/D-pad — 이동</div>
+  <div>A — 열기 / B — 깃발 / X — 코드 / Y — 새 게임</div>
+  <div>START — 도움말 토글</div>
+  <div style="margin-top:8px"><b>📱 모바일</b></div>
+  <div>탭 — 열기 / 길게 누르기 — 깃발</div>
+  <div style="margin-top:8px"><b>💡 힌트</b></div>
+  <div>라인 ON — 선택 셀 행/열 보라색 강조</div>
+  <div>위험 ON — 닫힌 셀 인접 지뢰 확률 색 (옅음→진함)</div>
+  <div>안전셀 ON — 100% 안전한 닫힌 셀 깜빡</div>
+</div>
+
+<div id="padmap-modal" class="hidden">
+  <button id="padmap-close" style="position:absolute;top:6px;right:10px;background:transparent;border:0;color:#fbbf24;font-size:20px;cursor:pointer">✕</button>
+  <div style="color:#fbbf24;font-weight:bold;text-align:center;margin-bottom:10px;font-size:13px">🎮 패드 키 세팅</div>
+  <div style="font-size:10px;opacity:0.7;margin-bottom:8px">각 행 [학습] 누르고 원하는 버튼 누르기.</div>
+  <div id="padmap-rows"></div>
+  <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+    <button id="padmap-export" style="background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:11px">📤 .json 내보내기</button>
+    <button id="padmap-import" style="background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:11px">📥 .json 가져오기</button>
+    <input id="padmap-file" type="file" accept=".json,.txt" style="display:none">
+    <button id="padmap-reset" style="background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:11px">기본값 복원</button>
+    <button id="padmap-done" style="background:#1d4ed8;border:1px solid #3b82f6;color:#fff;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:11px">완료</button>
+  </div>
+</div>
+<div id="pad-status"></div>
+
+<script>
+// ─── 보드 상태 ─────────────────────────────────────────
+let ROWS = 9, COLS = 9, MINES = 10;
+let board = [];      // {mine, num, open, flag, exploded}
+let firstClick = true;
+let gameOver = false;
+let gameWon = false;
+let selR = 0, selC = 0;
+let timerInt = null;
+let secs = 0;
+let modeLine = false;
+let modeColor = false;
+let modeSafe = false;
+
+let inputMode = localStorage.getItem('mine-input-mode') || (('ontouchstart' in window && navigator.maxTouchPoints > 0) ? 'touch' : 'mouse');
+let inputModeLocked = !!localStorage.getItem('mine-input-mode');
+
+const DIFFS = {
+  easy:   {r:9,  c:9,  m:10},
+  medium: {r:16, c:16, m:40},
+  hard:   {r:16, c:24, m:80},  // 24×16
+};
+
+function newGame(difficulty) {
+  if (difficulty) {
+    localStorage.setItem('mine-diff', difficulty);
+  }
+  const diff = localStorage.getItem('mine-diff') || 'easy';
+  const d = DIFFS[diff] || DIFFS.easy;
+  ROWS = d.r; COLS = d.c; MINES = d.m;
+  board = [];
+  for (let r = 0; r < ROWS; r++) {
+    const row = [];
+    for (let c = 0; c < COLS; c++) row.push({mine:false, num:0, open:false, flag:false, exploded:false});
+    board.push(row);
+  }
+  firstClick = true;
+  gameOver = false;
+  gameWon = false;
+  selR = 0; selC = 0;
+  secs = 0;
+  clearInterval(timerInt); timerInt = null;
+  document.getElementById('timer').textContent = '000';
+  document.getElementById('face').textContent = '🙂';
+  showBest();
+  buildBoard();
+  render();
+}
+
+function placeMines(safeR, safeC) {
+  // 첫 클릭 안전: safe 셀과 인접 셀 제외
+  const exclude = new Set();
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++) {
+      const rr = safeR + dr, cc = safeC + dc;
+      if (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS) exclude.add(rr * COLS + cc);
+    }
+  const total = ROWS * COLS;
+  const positions = [];
+  for (let i = 0; i < total; i++) if (!exclude.has(i)) positions.push(i);
+  for (let i = positions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  for (let i = 0; i < MINES && i < positions.length; i++) {
+    const p = positions[i];
+    const r = Math.floor(p / COLS), c = p % COLS;
+    board[r][c].mine = true;
+  }
+  // 인접 지뢰 카운트
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c].mine) continue;
+      let n = 0;
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const rr = r + dr, cc = c + dc;
+          if (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && board[rr][cc].mine) n++;
+        }
+      board[r][c].num = n;
+    }
+}
+
+function buildBoard() {
+  const el = document.getElementById('board');
+  el.style.gridTemplateColumns = `repeat(${COLS},1fr)`;
+  el.style.gridTemplateRows = `repeat(${ROWS},1fr)`;
+  // 셀 크기 자동
+  const maxSize = Math.min(window.innerWidth - 30, 720);
+  const cellSize = Math.floor(maxSize / COLS);
+  const finalSize = Math.max(20, Math.min(48, cellSize));
+  el.style.width = (finalSize * COLS + (COLS-1)*2 + 10) + 'px';
+  el.innerHTML = '';
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.width = finalSize + 'px';
+      cell.style.height = finalSize + 'px';
+      cell.style.fontSize = (finalSize * 0.55) + 'px';
+      // 3x3 큰 박스 구분 (sudoku 스타일)
+      if (c % 3 === 0 && c > 0) cell.style.borderLeft = '2px solid #fbbf24';
+      if (r % 3 === 0 && r > 0) cell.style.borderTop = '2px solid #fbbf24';
+      cell.dataset.r = r; cell.dataset.c = c;
+      bindCell(cell, r, c);
+      el.appendChild(cell);
+    }
+  }
+}
+
+function bindCell(cell, r, c) {
+  let touchStartTime = 0;
+  let touchTimer = null;
+  cell.addEventListener('pointerup', e => {
+    if (e.pointerType === 'touch') {
+      // 터치는 별도 처리 (길게 누름 = 깃발)
+      return;
+    }
+    if (e.button === 0) { selR = r; selC = c; openCell(r, c); }
+    else if (e.button === 1) { selR = r; selC = c; chord(r, c); e.preventDefault(); }
+    else if (e.button === 2) { selR = r; selC = c; toggleFlag(r, c); }
+  });
+  cell.addEventListener('contextmenu', e => { e.preventDefault(); selR = r; selC = c; toggleFlag(r, c); });
+  // mouseenter → selected 추적
+  cell.addEventListener('mouseenter', () => {
+    if (inputMode !== 'mouse') return;
+    selR = r; selC = c;
+    render();
+  });
+  // touch handling
+  cell.addEventListener('touchstart', e => {
+    if (!inputModeLocked) inputMode = 'touch';
+    touchStartTime = Date.now();
+    touchTimer = setTimeout(() => {
+      selR = r; selC = c;
+      toggleFlag(r, c);
+      touchTimer = null;
+    }, 400);  // 0.4s 길게 누름 = 깃발
+  }, {passive:true});
+  cell.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (touchTimer) {
+      clearTimeout(touchTimer);
+      touchTimer = null;
+      selR = r; selC = c;
+      openCell(r, c);
+    }
+  });
+  cell.addEventListener('touchmove', () => {
+    if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+  }, {passive:true});
+  // 휠 = 깃발 토글
+  cell.addEventListener('wheel', e => { e.preventDefault(); selR = r; selC = c; toggleFlag(r, c); }, {passive:false});
+}
+
+function startTimer() {
+  if (timerInt) return;
+  timerInt = setInterval(() => {
+    secs++;
+    document.getElementById('timer').textContent = String(secs).padStart(3, '0');
+  }, 1000);
+}
+
+function openCell(r, c) {
+  if (gameOver || gameWon) return;
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+  const cell = board[r][c];
+  if (cell.open || cell.flag) return;
+  if (firstClick) {
+    placeMines(r, c);
+    firstClick = false;
+    startTimer();
+  }
+  if (cell.mine) {
+    cell.open = true;
+    cell.exploded = true;
+    gameOver = true;
+    clearInterval(timerInt); timerInt = null;
+    // 모든 지뢰 표시
+    for (let rr = 0; rr < ROWS; rr++)
+      for (let cc = 0; cc < COLS; cc++) {
+        if (board[rr][cc].mine) board[rr][cc].open = true;
+      }
+    document.getElementById('face').textContent = '😵';
+    render();
+    return;
+  }
+  // flood fill (0인 셀 자동 확장)
+  const queue = [[r, c]];
+  while (queue.length) {
+    const [cr, cc] = queue.shift();
+    const co = board[cr][cc];
+    if (co.open || co.flag) continue;
+    co.open = true;
+    if (co.num === 0) {
+      for (let dr = -1; dr <= 1; dr++)
+        for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const rr = cr + dr, ccc = cc + dc;
+          if (rr >= 0 && rr < ROWS && ccc >= 0 && ccc < COLS && !board[rr][ccc].open && !board[rr][ccc].flag)
+            queue.push([rr, ccc]);
+        }
+    }
+  }
+  checkWin();
+  render();
+}
+
+function toggleFlag(r, c) {
+  if (gameOver || gameWon || firstClick) return;
+  const cell = board[r][c];
+  if (cell.open) return;
+  cell.flag = !cell.flag;
+  render();
+}
+
+function chord(r, c) {
+  if (gameOver || gameWon) return;
+  const cell = board[r][c];
+  if (!cell.open || cell.num === 0) return;
+  let flags = 0;
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const rr = r + dr, cc = c + dc;
+      if (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && board[rr][cc].flag) flags++;
+    }
+  if (flags === cell.num) {
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const rr = r + dr, cc = c + dc;
+        if (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && !board[rr][cc].flag)
+          openCell(rr, cc);
+      }
+  }
+}
+
+function checkWin() {
+  let opened = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++) if (board[r][c].open && !board[r][c].mine) opened++;
+  if (opened === ROWS * COLS - MINES) {
+    gameWon = true;
+    clearInterval(timerInt); timerInt = null;
+    document.getElementById('face').textContent = '🎉';
+    // 모든 지뢰 깃발 자동
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++) if (board[r][c].mine) board[r][c].flag = true;
+    // best
+    const diff = localStorage.getItem('mine-diff') || 'easy';
+    const key = 'mine-best-' + diff;
+    const prev = parseInt(localStorage.getItem(key) || '0');
+    if (!prev || secs < prev) {
+      localStorage.setItem(key, String(secs));
+      showToast('🎉 신기록! ' + secs + '초', 5000);
+    } else {
+      showToast('🎉 클리어! ' + secs + '초', 4000);
+    }
+    showBest();
+  }
+}
+
+// ─── 안전 셀 계산 (간단 — 인접 닫힌 셀이 모두 깃발이면 0인 정답) ──
+function isSafeCell(r, c) {
+  if (board[r][c].open || board[r][c].flag) return false;
+  // 주변 열린 셀 중 어느 하나가 "주변 닫힌 셀이 깃발 + 미공개로 한정되어 그 미공개에 지뢰가 없음 보장" 패턴
+  // 단순화: 주변 열린 숫자 셀이 있고, 그 셀 기준 인접 깃발 수 == num이면 나머지 인접 닫힌 셀은 안전
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const rr = r + dr, cc = c + dc;
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+      const o = board[rr][cc];
+      if (!o.open || o.mine || o.num === 0) continue;
+      // o 주변 깃발/닫힌 카운트
+      let flags = 0;
+      for (let dr2 = -1; dr2 <= 1; dr2++)
+        for (let dc2 = -1; dc2 <= 1; dc2++) {
+          if (!dr2 && !dc2) continue;
+          const r2 = rr + dr2, c2 = cc + dc2;
+          if (r2 < 0 || r2 >= ROWS || c2 < 0 || c2 >= COLS) continue;
+          if (board[r2][c2].flag) flags++;
+        }
+      if (flags === o.num) return true;  // o의 주변 깃발 = num → 나머지 닫힌 셀은 안전
+    }
+  return false;
+}
+
+// ─── 위험도 (인접 열린 숫자 셀의 '남은 미공개 셀 1개당' 확률 합) ──
+function dangerRating(r, c) {
+  if (board[r][c].open || board[r][c].flag) return 0;
+  let max = 0;
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const rr = r + dr, cc = c + dc;
+      if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+      const o = board[rr][cc];
+      if (!o.open || o.mine || o.num === 0) continue;
+      let flags = 0, closed = 0;
+      for (let dr2 = -1; dr2 <= 1; dr2++)
+        for (let dc2 = -1; dc2 <= 1; dc2++) {
+          if (!dr2 && !dc2) continue;
+          const r2 = rr + dr2, c2 = cc + dc2;
+          if (r2 < 0 || r2 >= ROWS || c2 < 0 || c2 >= COLS) continue;
+          if (board[r2][c2].flag) flags++;
+          else if (!board[r2][c2].open) closed++;
+        }
+      if (closed === 0) continue;
+      const remaining = o.num - flags;
+      const prob = remaining / closed;
+      if (prob > max) max = prob;
+    }
+  return max;  // 0~1
+}
+
+function render() {
+  const el = document.getElementById('board');
+  const cells = el.children;
+  document.getElementById('mine-count').textContent = MINES - countFlags();
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = cells[r * COLS + c];
+      const co = board[r][c];
+      cell.className = 'cell';
+      cell.textContent = '';
+      // 자식 overlay 제거
+      while (cell.firstChild) cell.removeChild(cell.firstChild);
+      if (co.open) {
+        cell.classList.add('open');
+        if (co.mine) {
+          cell.classList.add('mine');
+          if (co.exploded) cell.classList.add('exploded');
+        } else if (co.num > 0) {
+          cell.classList.add('n' + co.num);
+          cell.textContent = co.num;
+        }
+        // 잘못된 깃발 (게임오버 시)
+        if (gameOver && !co.mine && co.flag) cell.classList.add('wrong-flag');
+      } else if (co.flag) {
+        cell.classList.add('flag');
+      }
+      // 라인 ON: 선택 셀의 행/열 overlay
+      if (modeLine && !co.open && (r === selR || c === selC) && !(r === selR && c === selC)) {
+        if (r === selR) {
+          const lay = document.createElement('div');
+          lay.className = 'row-overlay';
+          cell.appendChild(lay);
+        }
+        if (c === selC) {
+          const lay = document.createElement('div');
+          lay.className = 'col-overlay';
+          cell.appendChild(lay);
+        }
+      }
+      // 위험도 색
+      if (modeColor && !co.open && !co.flag) {
+        const d = dangerRating(r, c);
+        if (d >= 0.66) cell.classList.add('diff-hard');
+        else if (d >= 0.33) cell.classList.add('diff-mid');
+        else if (d > 0) cell.classList.add('diff-easy');
+      }
+      // 안전 셀 (확정 0%)
+      if (modeSafe && !co.open && !co.flag && isSafeCell(r, c)) {
+        cell.classList.add('safe-cell');
+      }
+      // selected
+      if (r === selR && c === selC && !gameOver) cell.classList.add('selected');
+    }
+  }
+}
+
+function countFlags() {
+  let n = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++) if (board[r][c].flag) n++;
+  return n;
+}
+
+function fmtTime(s) {
+  return String(s).padStart(3, '0');
+}
+
+function showBest() {
+  const diff = localStorage.getItem('mine-diff') || 'easy';
+  const v = parseInt(localStorage.getItem('mine-best-' + diff) || '0');
+  const labels = {easy:'쉬움', medium:'중간', hard:'어려움'};
+  document.getElementById('best').textContent = v > 0 ? `🏆 ${labels[diff]} ${v}초` : `🏆 ${labels[diff]} --`;
+}
+
+function showToast(msg, ms) {
+  const el = document.getElementById('toast');
+  el.innerHTML = msg;
+  el.style.display = 'block';
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => { el.style.display = 'none'; }, ms || 4000);
+}
+
+// ─── 입력 ─────────────────────────────────────────
+function setInputMode(m) {
+  inputMode = m;
+  inputModeLocked = true;
+  localStorage.setItem('mine-input-mode', m);
+  document.getElementById('btn-mode-mouse').classList.toggle('active', m === 'mouse');
+  document.getElementById('btn-mode-pad').classList.toggle('active', m === 'gamepad');
+  document.getElementById('btn-mode-touch').classList.toggle('active', m === 'touch');
+}
+document.getElementById('btn-mode-mouse').addEventListener('click', () => setInputMode('mouse'));
+document.getElementById('btn-mode-pad').addEventListener('click', () => setInputMode('gamepad'));
+document.getElementById('btn-mode-touch').addEventListener('click', () => setInputMode('touch'));
+document.getElementById('btn-mode-' + (inputMode === 'gamepad' ? 'pad' : inputMode)).classList.add('active');
+
+// 키보드
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp') { selR = Math.max(0, selR - 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowDown') { selR = Math.min(ROWS - 1, selR + 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft') { selC = Math.max(0, selC - 1); render(); e.preventDefault(); }
+  else if (e.key === 'ArrowRight') { selC = Math.min(COLS - 1, selC + 1); render(); e.preventDefault(); }
+  else if (e.key === ' ' || e.key === 'Enter') { openCell(selR, selC); e.preventDefault(); }
+  else if (e.key === 'f' || e.key === 'F') { toggleFlag(selR, selC); }
+  else if (e.key === 'd' || e.key === 'D') { chord(selR, selC); }
+  else if (e.key === 'n' || e.key === 'N') { newGame(); }
+  else if (e.key === 'l' || e.key === 'L') { toggleLine(); }
+  else if (e.key === 'c' || e.key === 'C') { toggleColor(); }
+  else if (e.key === 's' || e.key === 'S') { toggleSafe(); }
+});
+
+// 토글
+function toggleLine() {
+  modeLine = !modeLine;
+  document.getElementById('btn-line').textContent = '라인 ' + (modeLine ? 'ON' : 'OFF');
+  document.getElementById('btn-line').classList.toggle('active', modeLine);
+  render();
+}
+function toggleColor() {
+  modeColor = !modeColor;
+  document.getElementById('btn-color').textContent = '위험 ' + (modeColor ? 'ON' : 'OFF');
+  document.getElementById('btn-color').classList.toggle('active', modeColor);
+  render();
+}
+function toggleSafe() {
+  modeSafe = !modeSafe;
+  document.getElementById('btn-safe').textContent = '안전셀 ' + (modeSafe ? 'ON' : 'OFF');
+  document.getElementById('btn-safe').classList.toggle('active', modeSafe);
+  render();
+}
+document.getElementById('btn-line').addEventListener('click', toggleLine);
+document.getElementById('btn-color').addEventListener('click', toggleColor);
+document.getElementById('btn-safe').addEventListener('click', toggleSafe);
+document.getElementById('btn-easy').addEventListener('click', () => newGame('easy'));
+document.getElementById('btn-medium').addEventListener('click', () => newGame('medium'));
+document.getElementById('btn-hard').addEventListener('click', () => newGame('hard'));
+document.getElementById('btn-new').addEventListener('click', () => newGame());
+document.getElementById('face').addEventListener('click', () => newGame());
+document.getElementById('btn-help').addEventListener('click', () => {
+  document.getElementById('help').classList.toggle('hidden');
+});
+
+// 우클릭 보드 메뉴 차단
+document.getElementById('board').addEventListener('contextmenu', e => e.preventDefault());
+
+// ─── 패드 ─────────────────────────────────────────
+let padmapCustom = {};
+try { padmapCustom = JSON.parse(localStorage.getItem('mine-padmap') || '{}'); } catch(e){}
+for (const k of Object.keys(padmapCustom)) {
+  const v = padmapCustom[k];
+  if (!v || typeof v !== 'object' || !v.type) delete padmapCustom[k];
+}
+localStorage.setItem('mine-padmap', JSON.stringify(padmapCustom));
+
+const PAD_ACTIONS = [
+  {id:'open',   name:'A — 열기',           type:'btn', stdIdx:0, rawIdx:0},
+  {id:'flag',   name:'B — 깃발 토글',      type:'btn', stdIdx:1, rawIdx:1},
+  {id:'chord',  name:'X — 코드(주변 열기)', type:'btn', stdIdx:2, rawIdx:2},
+  {id:'new',    name:'Y — 새 게임',        type:'btn', stdIdx:3, rawIdx:3},
+  {id:'help',   name:'START — 도움말',     type:'btn', stdIdx:9, rawIdx:7},
+  {id:'line',   name:'SELECT — 라인 토글', type:'btn', stdIdx:8, rawIdx:6},
+];
+let _learningId = null;
+let _learnPrevBtns = null, _learnPrevAxes = null;
+
+function getPadBinding(actionId, isStd) {
+  const cur = padmapCustom[actionId];
+  if (cur && typeof cur === 'object' && cur.type) return cur;
+  const a = PAD_ACTIONS.find(x => x.id === actionId);
+  if (!a) return null;
+  return {type:'btn', idx: isStd ? a.stdIdx : a.rawIdx};
+}
+
+function buildPadmapRows() {
+  const root = document.getElementById('padmap-rows');
+  root.innerHTML = '';
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  let isStd = true;
+  for (const g of gps) if (g) { isStd = g.mapping === 'standard'; break; }
+  for (const a of PAD_ACTIONS) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid #1e293b';
+    const lbl = document.createElement('span');
+    lbl.textContent = a.name;
+    lbl.style.cssText = 'flex:1;font-size:11px';
+    const idxSpan = document.createElement('span');
+    idxSpan.style.cssText = 'min-width:60px;color:#fbbf24;font-family:monospace;font-size:11px';
+    const bd = getPadBinding(a.id, isStd);
+    idxSpan.textContent = bd ? 'btn['+bd.idx+']' : '-';
+    const learnBtn = document.createElement('button');
+    learnBtn.textContent = '학습';
+    learnBtn.style.cssText = 'background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer';
+    learnBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      _learningId = a.id;
+      const gps2 = navigator.getGamepads();
+      for (const g of gps2) if (g) { _learnPrevBtns = g.buttons.map(b => b.pressed); _learnPrevAxes = g.axes.slice(); break; }
+      learnBtn.textContent = '눌러봐...';
+      learnBtn.style.background = '#fbbf24';
+      learnBtn.style.color = '#000';
+    });
+    const resetBtn = document.createElement('button');
+    resetBtn.textContent = '기본';
+    resetBtn.style.cssText = 'background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer';
+    resetBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      delete padmapCustom[a.id];
+      localStorage.setItem('mine-padmap', JSON.stringify(padmapCustom));
+      buildPadmapRows();
+    });
+    row.appendChild(lbl);
+    row.appendChild(idxSpan);
+    row.appendChild(learnBtn);
+    row.appendChild(resetBtn);
+    root.appendChild(row);
+  }
+}
+
+function padLearnPoll() {
+  if (!_learningId) return;
+  const gps = navigator.getGamepads();
+  for (const g of gps) {
+    if (!g) continue;
+    for (let i = 0; i < g.buttons.length; i++) {
+      const was = _learnPrevBtns && _learnPrevBtns[i];
+      const now = g.buttons[i].pressed || g.buttons[i].value > 0.5;
+      if (!was && now) {
+        padmapCustom[_learningId] = {type:'btn', idx:i};
+        localStorage.setItem('mine-padmap', JSON.stringify(padmapCustom));
+        _learningId = null; _learnPrevBtns = null; _learnPrevAxes = null;
+        buildPadmapRows();
+        return;
+      }
+    }
+    _learnPrevBtns = g.buttons.map(b => b.pressed);
+    _learnPrevAxes = g.axes.slice();
+    return;
+  }
+}
+
+(function(){
+  const m = document.getElementById('padmap-modal');
+  const close = () => { m.classList.add('hidden'); _learningId = null; };
+  document.getElementById('padmap-close').addEventListener('click', e => { e.stopPropagation(); close(); });
+  document.getElementById('padmap-done').addEventListener('click', e => { e.stopPropagation(); close(); });
+  document.getElementById('padmap-reset').addEventListener('click', e => {
+    e.stopPropagation();
+    padmapCustom = {};
+    localStorage.setItem('mine-padmap', JSON.stringify(padmapCustom));
+    buildPadmapRows();
+  });
+  document.getElementById('padmap-export').addEventListener('click', e => {
+    e.stopPropagation();
+    const data = JSON.stringify(padmapCustom, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'mine-padmap.json'; a.click();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById('padmap-import').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('padmap-file').click();
+  });
+  document.getElementById('padmap-file').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const j = JSON.parse(reader.result);
+        if (typeof j === 'object' && j) {
+          padmapCustom = j;
+          localStorage.setItem('mine-padmap', JSON.stringify(padmapCustom));
+          buildPadmapRows();
+        }
+      } catch(err) { alert('가져오기 실패: ' + err.message); }
+    };
+    reader.readAsText(f);
+    e.target.value = '';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !m.classList.contains('hidden')) close();
+  });
+})();
+
+// 패드 폴링
+let gpActive = false;
+let gpAxisCooldown = 0;
+let lastBtn = {};
+function pollGP() {
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  let anyPad = false;
+  for (const g of gps) if (g) { anyPad = true; break; }
+  if (anyPad && !gpActive) {
+    gpActive = true;
+    if (!inputModeLocked) inputMode = 'gamepad';
+  }
+  if (!anyPad) {
+    if (gpActive) {
+      gpActive = false;
+      document.getElementById('pad-status').textContent = '';
+    }
+    return;
+  }
+  for (const gp of gps) {
+    if (!gp) continue;
+    const isStd = gp.mapping === 'standard';
+    // 이동
+    const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0, th = 0.5;
+    let dr = 0, dc = 0;
+    if (ay < -th) dr = -1; else if (ay > th) dr = 1;
+    if (ax < -th) dc = -1; else if (ax > th) dc = 1;
+    // D-pad standard
+    if (isStd) {
+      if (gp.buttons[12] && gp.buttons[12].pressed) dr = -1;
+      if (gp.buttons[13] && gp.buttons[13].pressed) dr = 1;
+      if (gp.buttons[14] && gp.buttons[14].pressed) dc = -1;
+      if (gp.buttons[15] && gp.buttons[15].pressed) dc = 1;
+    }
+    if ((dr || dc) && gpAxisCooldown <= 0) {
+      selR = Math.max(0, Math.min(ROWS - 1, selR + dr));
+      selC = Math.max(0, Math.min(COLS - 1, selC + dc));
+      render();
+      gpAxisCooldown = 3;
+    }
+    if (gpAxisCooldown > 0) gpAxisCooldown--;
+    // 액션 버튼
+    function actionBtn(id) {
+      const b = getPadBinding(id, isStd);
+      if (!b) return false;
+      const bt = gp.buttons[b.idx];
+      return !!(bt && (bt.pressed || bt.value > 0.3));
+    }
+    const acts = [
+      ['open',  () => openCell(selR, selC)],
+      ['flag',  () => toggleFlag(selR, selC)],
+      ['chord', () => chord(selR, selC)],
+      ['new',   () => newGame()],
+      ['help',  () => document.getElementById('help').classList.toggle('hidden')],
+      ['line',  () => toggleLine()],
+    ];
+    for (const [id, fn] of acts) {
+      const pressed = actionBtn(id);
+      if (pressed && !lastBtn[id]) { fn(); lastBtn[id] = 1; }
+      if (!pressed) lastBtn[id] = 0;
+    }
+    // 디버그
+    var pressedBtns = [];
+    for (var bi = 0; bi < gp.buttons.length; bi++) {
+      if (gp.buttons[bi].pressed || gp.buttons[bi].value > 0.3) pressedBtns.push(bi + ':' + gp.buttons[bi].value.toFixed(1));
+    }
+    var activeAxes = [];
+    for (var aii = 0; aii < gp.axes.length; aii++) {
+      if (Math.abs(gp.axes[aii]) > 0.2) activeAxes.push(aii + ':' + gp.axes[aii].toFixed(2));
+    }
+    document.getElementById('pad-status').textContent =
+      '🎮 ' + (gp.id ? gp.id.slice(0,24) : 'pad') +
+      ' [' + (gp.mapping || 'raw') + '] ' +
+      'B[' + pressedBtns.join(',') + '] A[' + activeAxes.join(',') + ']';
+    break;
+  }
+}
+setInterval(pollGP, 50);
+setInterval(padLearnPoll, 80);
+
+// 패드 매핑 모달 — 도움말에서 열기 (간단)
+const padmapBtn = document.createElement('button');
+padmapBtn.textContent = '🎮 패드 키 세팅';
+padmapBtn.style.cssText = 'background:#1e293b;border:1px solid #475569;color:#cbd5e1;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:11px;margin-top:8px;display:block;width:100%';
+padmapBtn.addEventListener('click', () => {
+  buildPadmapRows();
+  document.getElementById('padmap-modal').classList.remove('hidden');
+});
+document.getElementById('help').appendChild(padmapBtn);
+
+// 첫 진입
+newGame();
+if (!localStorage.getItem('mine-intro-seen')) {
+  const isTouch = ('ontouchstart' in window) && navigator.maxTouchPoints > 0;
+  const msg = isTouch
+    ? '👆 <b>지뢰찾기</b>: 탭 = 열기 · 길게 누르기 = 깃발 🚩'
+    : '🖱️ <b>지뢰찾기</b>: 좌클릭 = 열기 · 우클릭/휠 = 깃발 🚩 · 더블/휠 = 코드 · <b>?</b> 도움말';
+  setTimeout(() => showToast(msg, 7000), 400);
+  localStorage.setItem('mine-intro-seen', '1');
+}
+</script>
+</body>
+</html>
