@@ -2,6 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>청산대천(靑山大天) — 한국풍 판타지 세계</title>
 <style>
@@ -94,7 +96,7 @@ footer{text-align:center;padding:30px;color:#7a6a55;font-size:11px;border-top:1p
 
 <script>
 // 데이터 로드 (MSI 생성 후 JSON 또는 텍스트로 채워짐)
-fetch('world.txt').then(r => r.ok ? r.text() : null).then(t => {
+fetch('world.txt?t='+Date.now()).then(r => r.ok ? r.text() : null).then(t => {
   if (t) {
     const html = t.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
       if (l.startsWith('**') && l.endsWith('**')) return '<h3>' + l.slice(2,-2) + '</h3>';
@@ -106,7 +108,7 @@ fetch('world.txt').then(r => r.ok ? r.text() : null).then(t => {
   }
 }).catch(() => {});
 
-fetch('characters.json').then(r => r.ok ? r.json() : null).then(arr => {
+fetch('characters.json?t='+Date.now()).then(r => r.ok ? r.json() : null).then(arr => {
   if (!arr) return;
   const grid = document.getElementById('char-grid');
   grid.innerHTML = '';
@@ -128,7 +130,7 @@ fetch('characters.json').then(r => r.ok ? r.json() : null).then(arr => {
     grid.appendChild(el);
   }
 }).catch(() => {});
-fetch('synopsis.txt').then(r => r.ok ? r.text() : null).then(t => {
+fetch('synopsis.txt?t='+Date.now()).then(r => r.ok ? r.text() : null).then(t => {
   if (!t) return;
   const lines = t.split('\n').filter(l => /^\s*\d+\./.test(l));
   let inner = '<h3 style="color:#fbbf24;border:0;margin-bottom:12px">시놉시스 25화</h3>';
@@ -136,7 +138,7 @@ fetch('synopsis.txt').then(r => r.ok ? r.text() : null).then(t => {
   inner += '<div id="ep01-body" style="margin-top:30px"></div>';
   document.getElementById('novel-list').innerHTML = inner;
   document.getElementById('novel-list').className = '';
-  fetch('episodes/ep01.txt').then(r => r.ok ? r.text() : null).then(et => {
+  fetch('episodes/ep01.txt?t='+Date.now()).then(r => r.ok ? r.text() : null).then(et => {
     if (!et) return;
     const body = '<div style="padding:20px;background:#0f0d09;border:1px solid #3a2f25;border-radius:6px;line-height:1.9"><h3 style="color:#fbbf24;border:0;margin:0 0 16px">📖 1편 — 청산도에서의 첫 만남</h3>'+et.split('\n').map(p=>p.trim()?'<p style="margin-bottom:12px">'+p+'</p>':'').join('')+'</div>';
     document.getElementById('ep01-body').innerHTML = body;
