@@ -4,55 +4,62 @@
 <meta charset="utf-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>에스카르타 마녀비행</title>
+<title>에스카르타 1945 (탄막슈팅)</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 body{background:#000;color:#e2d5b8;font-family:'Noto Sans KR',sans-serif;overflow:hidden;height:100vh;display:flex;justify-content:center;touch-action:none}
-header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 14px;background:rgba(15,13,9,0.85);border-bottom:1px solid #5a4030;z-index:30;font-size:12px;align-items:center}
-header b{color:#fbbf24;font-size:14px;letter-spacing:2px}
-header .stats{display:flex;gap:14px}
-header button{background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:5px 10px;border-radius:4px;font-size:11px}
+header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:6px 12px;background:rgba(15,13,9,0.9);border-bottom:1px solid #5a4030;z-index:30;font-size:11px;align-items:center}
+header b{color:#fbbf24;font-size:13px;letter-spacing:2px}
+header .stats{display:flex;gap:10px}
+header button{background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:4px 8px;border-radius:4px;font-size:10px}
 canvas{display:block;background:linear-gradient(180deg,#0a0820 0%,#1a1612 80%,#2d2620 100%);max-height:100vh}
 
 #joystick{position:fixed;left:20px;bottom:30px;width:120px;height:120px;border-radius:50%;background:rgba(15,13,9,0.4);border:2px solid rgba(251,191,36,0.4);z-index:25;touch-action:none}
 #joystick .knob{position:absolute;width:60px;height:60px;border-radius:50%;background:rgba(251,191,36,0.5);border:2px solid #fbbf24;top:30px;left:30px;transition:transform 0.05s}
 
-#fire-btn{position:fixed;right:30px;bottom:50px;width:90px;height:90px;border-radius:50%;background:rgba(191,97,106,0.5);border:3px solid #bf616a;color:#fff;font-size:16px;font-weight:bold;z-index:25;display:flex;align-items:center;justify-content:center;letter-spacing:2px}
+#fire-btn{position:fixed;right:30px;bottom:50px;width:90px;height:90px;border-radius:50%;background:rgba(191,97,106,0.5);border:3px solid #bf616a;color:#fff;font-size:14px;font-weight:bold;z-index:25}
+#bomb-btn{position:fixed;right:130px;bottom:50px;width:64px;height:64px;border-radius:50%;background:rgba(170,100,200,0.4);border:3px solid #a64ac9;color:#fff;font-size:11px;font-weight:bold;z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center}
 
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;z-index:50;text-align:center;padding:20px}
 #overlay.show{display:flex}
 #overlay h2{color:#fbbf24;font-size:24px}
 #overlay button{background:#1d4ed8;color:#fff;border:0;padding:12px 22px;border-radius:6px;font-size:15px;cursor:pointer}
-.char-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:340px}
+.char-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:380px}
 .pick{background:#2d2620;border:2px solid #5a4030;border-radius:6px;padding:8px;cursor:pointer}
-.pick img{width:90px;height:90px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px}
+.pick img{width:80px;height:80px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px}
 .pick.active{border-color:#fbbf24;background:#3a2f25}
 .pick .name{font-size:11px;color:#fbbf24;text-align:center}
-.pick .desc{font-size:9px;color:#a89878;text-align:center}
+.pick .desc{font-size:9px;color:#a89878;text-align:center;line-height:1.3}
+.help{font-size:11px;color:#a89878;line-height:1.5}
+
+#stage-banner{position:fixed;left:0;right:0;top:30%;color:#fbbf24;font-size:24px;text-align:center;letter-spacing:8px;z-index:28;text-shadow:0 0 20px #fbbf24;opacity:0;transition:opacity 0.4s;pointer-events:none;font-weight:bold}
+#stage-banner.show{opacity:1}
 </style>
 </head>
 <body>
 <header>
-  <b>🧙‍♀️ 마녀비행</b>
+  <b>✈ 1945 탄막</b>
   <div class="stats">
     <span>점수 <b id="score">0</b></span>
-    <span>HP <b id="hp">100</b></span>
-    <span>스테이지 <b id="stage">1</b></span>
+    <span>HP <b id="hp">3</b></span>
+    <span>WAVE <b id="wave">1</b></span>
+    <span>그레이즈 <b id="graze">0</b></span>
   </div>
   <button id="btn-new">새</button>
 </header>
 
-<canvas id="cv" width="420" height="700"></canvas>
+<canvas id="cv" width="420" height="720"></canvas>
 
+<div id="stage-banner"></div>
 <div id="joystick"><div class="knob" id="knob"></div></div>
 <button id="fire-btn">FIRE</button>
-<button id="bomb-btn" style="position:fixed;right:130px;bottom:50px;width:64px;height:64px;border-radius:50%;background:rgba(170,100,200,0.4);border:3px solid #a64ac9;color:#fff;font-size:11px;font-weight:bold;z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center">💥<small style="font-size:10px" id="bomb-cnt">3</small></button>
+<button id="bomb-btn">💥<small style="font-size:10px" id="bomb-cnt">3</small></button>
 
 <div id="overlay" class="show">
-  <h2>🧙‍♀️ 에스카르타 마녀비행</h2>
-  <p style="color:#a89878;font-size:13px">건버드 풍 종스크롤 슈팅<br>캐릭터별 다른 무기</p>
+  <h2>✈ 에스카르타 1945</h2>
+  <p class="help">탄막 슈팅 · 편대 비행 · 패턴 무기 · 옵션 사이드킥</p>
   <div class="char-picker" id="char-picker"></div>
-  <p style="font-size:11px;color:#a89878">조작: 좌측 조이스틱 이동 / 우측 FIRE / 키보드: WASD+Space</p>
+  <p class="help">조이스틱/WASD = 이동 · FIRE/Space = 사격 (꾹 차지)<br>B/봄 = 봄 (화면 정리)<br><b style="color:#fbbf24">팁:</b> 탄막 스치면 그레이즈 +10. 안 죽이고 점수 올리기</p>
   <button id="overlay-btn">시작</button>
 </div>
 
@@ -61,78 +68,171 @@ const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 const W = cv.width, H = cv.height;
 
+// ─── 캐릭터 ────────────────────────────────────
 const PICKS = [
-  {id:'02_lunaria', name:'루나리아', desc:'엘프 활사', weapon:'arrow', col:'#7ec564', dmg:1, rate:8},
-  {id:'07_nilas',   name:'닐라스',   desc:'엘프 여왕', weapon:'magic', col:'#d4a857', dmg:2, rate:12},
-  {id:'10_anari',   name:'아나리',   desc:'사기 판별사', weapon:'beam',  col:'#fbbf24', dmg:1, rate:5},
+  {id:'02_lunaria', name:'루나리아', desc:'엘프 활사\n직선 다발', col:'#7ec564', weapon:'arrow', dmg:1, rate:5},
+  {id:'07_nilas',   name:'닐라스',   desc:'엘프 여왕\n홈잉 마법', col:'#d4a857', weapon:'homing', dmg:1, rate:8},
+  {id:'10_anari',   name:'아나리',   desc:'사기 판별사\n넓은 빔', col:'#fbbf24', weapon:'wide', dmg:1, rate:4},
 ];
 let picked = PICKS[0];
 
 const imgs = {};
-for (const p of PICKS) {
-  imgs[p.id] = new Image();
-  imgs[p.id].src = `cards/${p.id}.png`;
-}
+[...PICKS, {id:'e01_orc_warrior'}, {id:'e07_imp'}, {id:'e02_goblin_worker'}, {id:'09_old_raven'}, {id:'08_blackmark'}].forEach(c => {
+  imgs[c.id] = new Image(); imgs[c.id].src = `cards/${c.id}.png`;
+});
 
 function pickerInit() {
   const pk = document.getElementById('char-picker');
   pk.innerHTML = '';
-  PICKS.forEach((p, i) => {
+  PICKS.forEach((c, i) => {
     const div = document.createElement('div');
     div.className = 'pick' + (i===0?' active':'');
-    div.innerHTML = `<img src="cards/${p.id}.png"><div class="name">${p.name}</div><div class="desc">${p.desc}</div>`;
+    div.innerHTML = `<img src="cards/${c.id}.png"><div class="name">${c.name}</div><div class="desc">${c.desc.replace(/\n/g,'<br>')}</div>`;
     div.addEventListener('click', () => {
       document.querySelectorAll('.pick').forEach(p => p.classList.remove('active'));
       div.classList.add('active');
-      picked = p;
+      picked = c;
     });
     pk.appendChild(div);
   });
 }
 pickerInit();
 
-let state, keys = {}, joy = {dx:0, dy:0, active:false}, firing = false;
+// ─── 탄막 패턴 ──────────────────────────────────
+function patternFan(e, target, n=5, spread=0.5, speed=3) {
+  const ang = Math.atan2(target.y - e.y, target.x - e.x);
+  for (let i = 0; i < n; i++) {
+    const a = ang + (i - (n-1)/2) * (spread / (n-1 || 1));
+    state.eBullets.push({x: e.x, y: e.y, vx: Math.cos(a)*speed, vy: Math.sin(a)*speed, life: 200, col:'#ff6060', r:5});
+  }
+}
+function patternRing(e, n=12, speed=2.5, offset=0) {
+  for (let i = 0; i < n; i++) {
+    const a = (i/n)*Math.PI*2 + offset;
+    state.eBullets.push({x: e.x, y: e.y, vx: Math.cos(a)*speed, vy: Math.sin(a)*speed, life: 200, col:'#ff8040', r:5});
+  }
+}
+function patternSpiral(e, n=6, speed=3) {
+  e._spiralA = (e._spiralA || 0) + 0.3;
+  for (let i = 0; i < n; i++) {
+    const a = e._spiralA + (i/n)*Math.PI*2;
+    state.eBullets.push({x: e.x, y: e.y, vx: Math.cos(a)*speed, vy: Math.sin(a)*speed, life: 200, col:'#a64ac9', r:4});
+  }
+}
+function patternAimed(e, target, speed=4) {
+  const a = Math.atan2(target.y - e.y, target.x - e.x);
+  state.eBullets.push({x: e.x, y: e.y, vx: Math.cos(a)*speed, vy: Math.sin(a)*speed, life: 250, col:'#ff4040', r:5});
+}
+
+// ─── 편대 패턴 (적 wave) ──────────────────────────
+function waveFormationV(count=5, eid='e01_orc_warrior', pattern='aimed') {
+  const formation = [];
+  for (let i = 0; i < count; i++) {
+    const off = i - (count-1)/2;
+    formation.push({
+      eid, x: W/2 + off*30, y: -60 - Math.abs(off)*25,
+      hp: 8, maxHp: 8, vx: 0, vy: 1.3, r: 18, score: 100,
+      pattern, cd: 60 + Math.random()*40,
+    });
+  }
+  return formation;
+}
+function waveLine(count=6, eid='e07_imp', pattern='fan') {
+  const formation = [];
+  for (let i = 0; i < count; i++) {
+    formation.push({
+      eid, x: 60 + i*((W-120)/(count-1)), y: -60,
+      hp: 10, maxHp: 10, vx: 0, vy: 1.5, r: 18, score: 100,
+      pattern, cd: 80 + i*15,
+    });
+  }
+  return formation;
+}
+function waveCircle(count=8, eid='e02_goblin_worker', pattern='ring') {
+  const formation = [];
+  for (let i = 0; i < count; i++) {
+    const a = (i/count) * Math.PI*2;
+    formation.push({
+      eid, x: W/2 + Math.cos(a)*100, y: -100 + Math.sin(a)*30,
+      hp: 12, maxHp: 12, vx: Math.cos(a)*0.3, vy: 1.0, r: 18, score: 150,
+      pattern, cd: 100,
+    });
+  }
+  return formation;
+}
+function spawnBoss(stage) {
+  const isBlackmark = stage === 2;
+  return [{
+    eid: isBlackmark ? '08_blackmark' : '09_old_raven',
+    x: W/2, y: -80, hp: 300 + stage*100, maxHp: 300 + stage*100,
+    vx: 1.5, vy: 0.5, r: 50, score: 5000,
+    pattern: 'boss', cd: 30, boss: true, name: isBlackmark ? '블랙마크' : '올드 레이븐',
+    targetY: 100, phase: 1,
+  }];
+}
+
+const WAVES = [
+  () => waveFormationV(5, 'e01_orc_warrior', 'aimed'),
+  () => waveLine(6, 'e07_imp', 'fan'),
+  () => waveFormationV(7, 'e02_goblin_worker', 'aimed'),
+  () => waveCircle(8, 'e07_imp', 'ring'),
+  () => spawnBoss(1),
+  () => waveFormationV(6, 'e01_orc_warrior', 'fan'),
+  () => waveLine(8, 'e02_goblin_worker', 'aimed'),
+  () => waveCircle(10, 'e07_imp', 'spiral'),
+  () => spawnBoss(2),
+];
+
+// ─── 상태 ─────────────────────────────────────
+let state, keys = {}, joy = {dx:0, dy:0, active:false}, firing = false, bombHit = false;
 
 function newGame() {
   document.getElementById('overlay').classList.remove('show');
   state = {
-    player: {x: W/2, y: H-100, hp: 100, maxHp: 100, r: 18, cd: 0, charge: 0, bombs: 3},
-    bullets: [],
-    enemies: [],
-    eBullets: [],
-    particles: [],
-    score: 0, stage: 1,
-    spawnTimer: 0,
-    bossActive: false,
-    bombFlash: 0,
+    p: {x: W/2, y: H-80, hp: 3, maxHp: 3, r: 14, hitR: 4, cd: 0, charge: 0, bombs: 3, inv: 0},
+    options: [
+      {x: 0, y: 0, side: -1},  // 좌 사이드킥
+      {x: 0, y: 0, side: 1},   // 우 사이드킥
+    ],
+    bullets: [], eBullets: [], enemies: [], particles: [], pickups: [],
+    score: 0, graze: 0,
+    wave: 0, waveTimer: 0,
+    boss: null,
     running: true,
+    bombFlash: 0,
+    grazeCD: 0,
   };
-  document.getElementById('bomb-cnt').textContent = state.player.bombs;
+  showBanner('STAGE 1');
+  startWave();
+  document.getElementById('bomb-cnt').textContent = state.p.bombs;
   requestAnimationFrame(tick);
 }
 
-function spawnEnemy() {
-  const types = [
-    {hp: 2, speed: 1.2, r: 16, fireRate: 80, color:'#bf616a', score: 50},
-    {hp: 4, speed: 0.8, r: 22, fireRate: 60, color:'#a87830', score: 100},
-  ];
-  const t = types[Math.floor(Math.random()*types.length)];
-  state.enemies.push({
-    x: 30 + Math.random()*(W-60), y: -30, ...t,
-    cd: Math.random()*60, hp: t.hp + Math.floor(state.stage/2)
-  });
+function showBanner(msg) {
+  const b = document.getElementById('stage-banner');
+  b.textContent = msg;
+  b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 1500);
 }
 
-function spawnBoss() {
-  state.enemies.push({
-    x: W/2, y: -60, hp: 50 + state.stage*20, speed: 0.3, r: 50,
-    fireRate: 30, color:'#5a3030', score: 1000, boss: true, cd: 60,
-  });
-  state.bossActive = true;
+function startWave() {
+  if (state.wave >= WAVES.length) {
+    win();
+    return;
+  }
+  const enemies = WAVES[state.wave]();
+  state.enemies = state.enemies.concat(enemies);
+  if (enemies.some(e => e.boss)) {
+    showBanner('★ BOSS ★');
+    state.boss = enemies.find(e => e.boss);
+  }
+  state.waveTimer = 0;
 }
 
 function tick() {
   if (!state || !state.running) return;
+  const p = state.p;
+
   // 이동
   let dx = 0, dy = 0;
   if (keys['ArrowLeft'] || keys['a']) dx = -1;
@@ -140,133 +240,182 @@ function tick() {
   if (keys['ArrowUp']   || keys['w']) dy = -1;
   if (keys['ArrowDown'] || keys['s']) dy = 1;
   if (joy.active) { dx = joy.dx; dy = joy.dy; }
-  state.player.x += dx * 5;
-  state.player.y += dy * 5;
-  state.player.x = Math.max(20, Math.min(W-20, state.player.x));
-  state.player.y = Math.max(30, Math.min(H-30, state.player.y));
+  p.x += dx * 5;
+  p.y += dy * 5;
+  p.x = Math.max(20, Math.min(W-20, p.x));
+  p.y = Math.max(30, Math.min(H-30, p.y));
 
-  // 발사 (꾹 누르면 차지)
+  // 옵션 위치 (사이드킥)
+  state.options[0].x = p.x - 30; state.options[0].y = p.y + 10;
+  state.options[1].x = p.x + 30; state.options[1].y = p.y + 10;
+
+  // 사격
   if (keys[' '] || firing) {
-    state.player.charge = Math.min(60, state.player.charge + 1);
-    if (state.player.cd <= 0) {
+    p.charge = Math.min(60, p.charge + 1);
+    if (p.cd <= 0) {
       fire(false);
-      state.player.cd = picked.rate;
+      p.cd = picked.rate;
     }
   } else {
-    if (state.player.charge > 30) {
-      fire(true);  // 차지샷
-    }
-    state.player.charge = 0;
+    if (p.charge > 30) fire(true);
+    p.charge = 0;
   }
-  if (state.player.cd > 0) state.player.cd--;
+  if (p.cd > 0) p.cd--;
 
   // 봄
-  if (keys['b'] || keys['B'] || state.bombTrigger) {
-    state.bombTrigger = false; keys['b'] = false; keys['B'] = false;
-    if (state.player.bombs > 0) {
-      state.player.bombs--;
-      state.bombFlash = 30;
-      for (const e of state.enemies) e.hp -= 100;
+  if (keys['b'] || keys['B'] || bombHit) {
+    keys['b'] = keys['B'] = false; bombHit = false;
+    if (p.bombs > 0) {
+      p.bombs--;
+      state.bombFlash = 40;
+      // 적탄 모두 점수로 환산
+      state.score += state.eBullets.length * 10;
       state.eBullets = [];
-      document.getElementById('bomb-cnt').textContent = state.player.bombs;
+      // 모든 적 100 피해
+      for (const e of state.enemies) e.hp -= 80;
+      p.inv = 60;
+      document.getElementById('bomb-cnt').textContent = p.bombs;
     }
   }
 
-  // 적 스폰
-  state.spawnTimer++;
-  if (!state.bossActive) {
-    const interval = Math.max(20, 60 - state.stage*5);
-    if (state.spawnTimer > interval) {
-      spawnEnemy(); state.spawnTimer = 0;
-    }
-    if (state.score >= state.stage * 800) {
-      spawnBoss();
-    }
-  }
-
-  // 총알 업데이트
-  state.bullets = state.bullets.filter(b => {
-    b.x += b.vx; b.y += b.vy;
-    return b.y > -10 && b.x > -10 && b.x < W+10;
-  });
-  state.eBullets = state.eBullets.filter(b => {
-    b.x += b.vx; b.y += b.vy;
-    return b.y < H+10 && b.x > -10 && b.x < W+10;
-  });
+  // 무적 감소
+  if (p.inv > 0) p.inv--;
+  if (state.grazeCD > 0) state.grazeCD--;
 
   // 적 업데이트
   state.enemies.forEach(e => {
-    e.y += e.speed;
+    e.x += e.vx;
+    e.y += e.vy;
+    // 보스 — 자기 자리로 진입
+    if (e.boss) {
+      if (e.y < e.targetY) e.y = Math.min(e.y + 0.8, e.targetY);
+      else {
+        e.y = e.targetY + Math.sin(state.waveTimer*0.02) * 30;
+        if (e.x < 80 || e.x > W-80) e.vx = -e.vx;
+      }
+      // 페이즈 전환
+      if (e.hp < e.maxHp/2 && e.phase === 1) { e.phase = 2; e.cd = 0; showBanner('PHASE 2'); }
+    } else {
+      // 일반 적 좌우 흔들
+      e.x += Math.sin(state.waveTimer*0.03 + e.y*0.02) * 0.6;
+    }
+
     e.cd--;
     if (e.cd <= 0) {
-      const ang = Math.atan2(state.player.y - e.y, state.player.x - e.x);
-      state.eBullets.push({x: e.x, y: e.y, vx: Math.cos(ang)*3, vy: Math.sin(ang)*3});
-      e.cd = e.fireRate;
-      if (e.boss) {
-        // 보스 부채꼴 발사
-        for (let i = -2; i <= 2; i++) {
-          state.eBullets.push({x: e.x, y: e.y, vx: Math.cos(ang+i*0.2)*3, vy: Math.sin(ang+i*0.2)*3});
+      const pat = e.pattern;
+      if (pat === 'aimed') { patternAimed(e, p, 3.5); e.cd = 90; }
+      else if (pat === 'fan') { patternFan(e, p, 3, 0.4, 3); e.cd = 100; }
+      else if (pat === 'ring') { patternRing(e, 8, 2.2, Math.random()*Math.PI*2); e.cd = 120; }
+      else if (pat === 'spiral') { patternSpiral(e, 4, 2.5); e.cd = 8; }
+      else if (pat === 'boss') {
+        if (e.phase === 1) {
+          patternFan(e, p, 7, 1.2, 3); e.cd = 50;
+        } else {
+          patternRing(e, 16, 2.5, state.waveTimer*0.05); e.cd = 25;
+          if (state.waveTimer % 60 === 0) patternAimed(e, p, 5);
         }
       }
     }
   });
 
-  // 충돌 — 총알 vs 적
-  for (const b of state.bullets) {
+  // 아군탄
+  state.bullets = state.bullets.filter(b => {
+    b.x += b.vx; b.y += b.vy;
+    // 홈잉
+    if (b.homing) {
+      let nearest = null, nd = 1e9;
+      for (const e of state.enemies) {
+        const d = Math.hypot(e.x-b.x, e.y-b.y);
+        if (d < nd) { nd = d; nearest = e; }
+      }
+      if (nearest && nd < 300) {
+        const a = Math.atan2(nearest.y-b.y, nearest.x-b.x);
+        b.vx = b.vx*0.85 + Math.cos(a)*1.6;
+        b.vy = b.vy*0.85 + Math.sin(a)*1.6;
+      }
+    }
+    if (b.y < -10 || b.y > H+10 || b.x < -10 || b.x > W+10) return false;
     for (const e of state.enemies) {
-      const dx = b.x - e.x, dy = b.y - e.y;
-      if (Math.sqrt(dx*dx+dy*dy) < e.r + (b.big > 1 ? 5 : 0)) {
+      if (Math.hypot(b.x-e.x, b.y-e.y) < e.r + (b.big?5:0)) {
         e.hp -= picked.dmg * (b.big || 1);
-        if ((b.big || 1) <= 3) b.dead = true;
-        explode(b.x, b.y, picked.col);
-        if (e.hp <= 0) {
-          e.dead = true;
-          state.score += e.score;
-          explode(e.x, e.y, e.color, 12);
-          if (e.boss) {
-            state.bossActive = false;
-            state.stage++;
-          }
-        }
-        break;
+        explode(b.x, b.y, picked.col, 3);
+        if (!b.pierce) return false;
       }
     }
-  }
-  state.bullets = state.bullets.filter(b => !b.dead);
-  state.enemies = state.enemies.filter(e => !e.dead && e.y < H+50);
+    return true;
+  });
 
-  // 충돌 — 적탄 vs 플레이어
-  for (const b of state.eBullets) {
-    const dx = b.x - state.player.x, dy = b.y - state.player.y;
-    if (Math.sqrt(dx*dx+dy*dy) < state.player.r) {
-      state.player.hp -= 5;
-      b.dead = true;
-      explode(state.player.x, state.player.y, '#bf616a', 6);
-      if (state.player.hp <= 0) {
-        gameOver();
-        return;
+  // 적탄 + 충돌
+  state.eBullets = state.eBullets.filter(b => {
+    b.x += b.vx; b.y += b.vy; b.life--;
+    if (b.life <= 0) return false;
+    if (b.x < -10 || b.x > W+10 || b.y > H+10) return false;
+    const d = Math.hypot(b.x-p.x, b.y-p.y);
+    if (d < p.hitR + b.r) {
+      if (p.inv <= 0) {
+        p.hp--;
+        p.inv = 90;
+        explode(p.x, p.y, '#fff', 15);
+        if (p.hp <= 0) { gameOver(); return false; }
       }
+      return false;
     }
-  }
-  state.eBullets = state.eBullets.filter(b => !b.dead);
+    // 그레이즈
+    if (d < p.r + b.r && state.grazeCD <= 0) {
+      state.graze++; state.score += 10; state.grazeCD = 5;
+      explode(p.x, p.y, '#88c0d0', 1);
+    }
+    return true;
+  });
 
-  // 적 본체 충돌
-  for (const e of state.enemies) {
-    const dx = e.x - state.player.x, dy = e.y - state.player.y;
-    if (Math.sqrt(dx*dx+dy*dy) < e.r + state.player.r) {
-      state.player.hp -= 15;
-      e.dead = true;
-      explode(e.x, e.y, '#bf616a', 10);
-      if (state.player.hp <= 0) { gameOver(); return; }
+  // 적 죽음
+  state.enemies = state.enemies.filter(e => {
+    if (e.hp <= 0) {
+      state.score += e.score;
+      explode(e.x, e.y, '#bf616a', e.boss ? 30 : 8);
+      if (e.boss) { state.boss = null; }
+      // 픽업 드랍
+      if (Math.random() < (e.boss ? 1.0 : 0.05)) {
+        const kinds = ['bomb','heal','power'];
+        state.pickups.push({x:e.x, y:e.y, kind: kinds[Math.floor(Math.random()*kinds.length)], vy:1.5});
+      }
+      return false;
     }
-  }
-  state.enemies = state.enemies.filter(e => !e.dead);
+    return true;
+  });
+
+  // 픽업
+  state.pickups = state.pickups.filter(pk => {
+    pk.y += pk.vy;
+    if (pk.y > H+20) return false;
+    if (Math.hypot(pk.x-p.x, pk.y-p.y) < 24) {
+      if (pk.kind === 'bomb') { p.bombs = Math.min(9, p.bombs+1); document.getElementById('bomb-cnt').textContent = p.bombs; }
+      if (pk.kind === 'heal') { p.hp = Math.min(p.maxHp, p.hp+1); }
+      if (pk.kind === 'power') { state.score += 500; }
+      return false;
+    }
+    return true;
+  });
 
   // 파티클
-  state.particles = state.particles.filter(p => {
-    p.x += p.vx; p.y += p.vy; p.life--;
-    return p.life > 0;
+  state.particles = state.particles.filter(pr => {
+    pr.x += pr.vx; pr.y += pr.vy; pr.vy += 0.15; pr.life--;
+    return pr.life > 0;
   });
+
+  // wave 진행
+  state.waveTimer++;
+  if (state.enemies.length === 0 && state.pickups.length === 0 && state.waveTimer > 60) {
+    state.wave++;
+    if (state.wave < WAVES.length) {
+      if (state.wave === 4) showBanner('STAGE 2');
+      if (state.wave === 8) showBanner('FINAL');
+      startWave();
+    } else if (state.waveTimer > 120) {
+      win();
+      return;
+    }
+  }
 
   draw();
   updateHUD();
@@ -274,117 +423,158 @@ function tick() {
 }
 
 function fire(charged) {
-  const p = state.player;
-  const big = charged ? 5 : 1;
-  if (picked.weapon === 'arrow') {
-    state.bullets.push({x: p.x, y: p.y-20, vx: 0, vy: -10, big});
-    if (charged) {
-      state.bullets.push({x: p.x-12, y: p.y-15, vx: -2, vy: -9, big});
-      state.bullets.push({x: p.x+12, y: p.y-15, vx: 2, vy: -9, big});
-    }
-  } else if (picked.weapon === 'magic') {
-    state.bullets.push({x: p.x-8, y: p.y-15, vx: -1, vy: -9, big});
-    state.bullets.push({x: p.x+8, y: p.y-15, vx: 1, vy: -9, big});
-    if (charged) {
-      state.bullets.push({x: p.x, y: p.y-22, vx: 0, vy: -12, big: 8});
-    }
-  } else if (picked.weapon === 'beam') {
-    state.bullets.push({x: p.x, y: p.y-20, vx: -0.5, vy: -12, big});
-    state.bullets.push({x: p.x, y: p.y-20, vx: 0.5, vy: -12, big});
-    if (charged) for (let i = -2; i <= 2; i++) {
-      state.bullets.push({x: p.x, y: p.y-22, vx: i*1.5, vy: -10, big});
+  const p = state.p;
+  const big = charged ? 4 : 1;
+  // 메인 + 옵션 양쪽
+  const sources = [{x: p.x, y: p.y-20}, {x: state.options[0].x, y: state.options[0].y-10}, {x: state.options[1].x, y: state.options[1].y-10}];
+  for (const s of sources) {
+    if (picked.weapon === 'arrow') {
+      state.bullets.push({x: s.x, y: s.y, vx: 0, vy: -10, big});
+      if (charged) {
+        state.bullets.push({x: s.x-6, y: s.y, vx: -1, vy: -9, big});
+        state.bullets.push({x: s.x+6, y: s.y, vx: 1, vy: -9, big});
+      }
+    } else if (picked.weapon === 'homing') {
+      state.bullets.push({x: s.x, y: s.y, vx: (Math.random()-0.5)*2, vy: -7, big, homing: true});
+      if (charged) state.bullets.push({x: s.x, y: s.y, vx: 0, vy: -12, big:6, pierce: true});
+    } else if (picked.weapon === 'wide') {
+      state.bullets.push({x: s.x-6, y: s.y, vx: -1.5, vy: -10, big});
+      state.bullets.push({x: s.x+6, y: s.y, vx: 1.5, vy: -10, big});
+      if (charged) state.bullets.push({x: s.x, y: s.y, vx: 0, vy: -12, big:6, pierce: true});
     }
   }
 }
 
 function explode(x, y, col, n=5) {
   for (let i=0;i<n;i++) {
-    const a = Math.random()*Math.PI*2, s = 1 + Math.random()*3;
-    state.particles.push({x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 20, col});
+    const a = Math.random()*Math.PI*2, s = 1 + Math.random()*4;
+    state.particles.push({x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 20+Math.random()*15, col});
   }
 }
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
-  // 배경 별
+  // 배경 별 (파랄랙스)
   ctx.fillStyle = '#fff';
   const t = Date.now()*0.001;
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 50; i++) {
     const x = (i*73)%W;
-    const y = ((i*47 + t*40)%H);
-    ctx.fillRect(x, y, 1, 2);
+    const y = ((i*47 + t*60)%H);
+    const sp = 1 + (i%3);
+    ctx.globalAlpha = sp/3;
+    ctx.fillRect(x, y, 1, sp);
   }
+  ctx.globalAlpha = 1;
+
   // 적
   for (const e of state.enemies) {
-    ctx.fillStyle = e.color;
-    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fill();
-    if (e.boss) {
-      // 보스 HP 바
-      ctx.fillStyle = '#bf616a';
-      const w = 200, h = 6;
-      ctx.fillRect((W-w)/2, 50, w, h);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect((W-w)/2, 50, w * (e.hp / (50 + state.stage*20)), h);
+    const img = imgs[e.eid];
+    if (img && img.complete && img.width > 0) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.clip();
+      ctx.drawImage(img, e.x-e.r, e.y-e.r, e.r*2, e.r*2);
+      ctx.restore();
     }
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
-    ctx.stroke();
+    ctx.strokeStyle = e.boss ? '#bf616a' : '#fbbf24';
+    ctx.lineWidth = e.boss ? 3 : 2;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.stroke();
+    if (e.boss) {
+      ctx.fillStyle = '#bf616a';
+      ctx.fillRect(W/2-150, 50, 300, 8);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(W/2-150, 50, 300 * (e.hp / e.maxHp), 8);
+      ctx.fillStyle = '#fbbf24'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(`보스 — ${e.name} (P${e.phase})`, W/2, 42);
+    }
   }
   // 적탄
-  ctx.fillStyle = '#ff6060';
   for (const b of state.eBullets) {
-    ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = b.col;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5; ctx.stroke();
   }
   // 아군탄
   for (const b of state.bullets) {
-    ctx.fillStyle = b.big > 1 ? '#fff' : picked.col;
+    ctx.fillStyle = picked.col;
     const sz = b.big > 1 ? 4 + b.big : 2;
-    ctx.fillRect(b.x-sz, b.y-8-sz, sz*2, 12+sz);
-    if (b.big > 1) {
-      ctx.fillStyle = picked.col; ctx.globalAlpha = 0.5;
-      ctx.fillRect(b.x-sz-3, b.y-10-sz, sz*2+6, 14+sz);
-      ctx.globalAlpha = 1;
+    if (b.pierce) {
+      ctx.fillStyle = '#fff'; ctx.shadowBlur = 10; ctx.shadowColor = picked.col;
     }
+    ctx.fillRect(b.x-sz, b.y-8-sz, sz*2, 12+sz);
+    ctx.shadowBlur = 0;
   }
-  // 봄 플래시
-  if (state.bombFlash > 0) {
-    ctx.fillStyle = `rgba(255,255,200,${state.bombFlash/30 * 0.7})`;
-    ctx.fillRect(0, 0, W, H);
-    state.bombFlash--;
+  // 옵션 (사이드킥)
+  for (const o of state.options) {
+    ctx.fillStyle = picked.col;
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath(); ctx.arc(o.x, o.y, 6, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
   }
-  // 차지 게이지
-  if (state.player.charge > 30) {
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(state.player.x - 20, state.player.y + 22, 40 * (state.player.charge/60), 4);
-  }
-  // 플레이어 (캐릭터 이미지 원형 클립)
+  // 플레이어
+  const p = state.p;
+  ctx.globalAlpha = p.inv > 0 ? (Math.floor(p.inv/4)%2 === 0 ? 0.3 : 1) : 1;
   const img = imgs[picked.id];
   if (img && img.complete && img.width > 0) {
     ctx.save();
-    ctx.beginPath(); ctx.arc(state.player.x, state.player.y, state.player.r, 0, Math.PI*2); ctx.clip();
-    ctx.drawImage(img, state.player.x-state.player.r, state.player.y-state.player.r, state.player.r*2, state.player.r*2);
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.clip();
+    ctx.drawImage(img, p.x-p.r, p.y-p.r, p.r*2, p.r*2);
     ctx.restore();
   }
   ctx.strokeStyle = picked.col; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(state.player.x, state.player.y, state.player.r, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.stroke();
+  ctx.globalAlpha = 1;
+  // 히트박스 점 (작은 빨강)
+  ctx.fillStyle = '#ff4040';
+  ctx.beginPath(); ctx.arc(p.x, p.y, p.hitR, 0, Math.PI*2); ctx.fill();
+  // 차지 게이지
+  if (p.charge > 30) {
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(p.x-20, p.y+22, 40 * (p.charge/60), 3);
+  }
   // 파티클
-  for (const p of state.particles) {
-    ctx.fillStyle = p.col;
-    ctx.globalAlpha = p.life/20;
-    ctx.fillRect(p.x-1, p.y-1, 3, 3);
+  for (const pr of state.particles) {
+    ctx.fillStyle = pr.col;
+    ctx.globalAlpha = pr.life/30;
+    ctx.fillRect(pr.x-2, pr.y-2, 4, 4);
   }
   ctx.globalAlpha = 1;
+
+  // 픽업
+  for (const pk of state.pickups) {
+    const c = pk.kind === 'bomb' ? '#a64ac9' : pk.kind === 'heal' ? '#7ec564' : '#fbbf24';
+    ctx.fillStyle = c;
+    ctx.fillRect(pk.x-10, pk.y-10, 20, 20);
+    ctx.strokeStyle = '#fff'; ctx.strokeRect(pk.x-10, pk.y-10, 20, 20);
+    ctx.fillStyle = '#000'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(pk.kind === 'bomb' ? 'B' : pk.kind === 'heal' ? 'H' : 'P', pk.x, pk.y);
+  }
+  ctx.textBaseline = 'alphabetic';
+
+  // 봄 플래시
+  if (state.bombFlash > 0) {
+    ctx.fillStyle = `rgba(170,100,200,${state.bombFlash/40 * 0.6})`;
+    ctx.fillRect(0, 0, W, H);
+    state.bombFlash--;
+  }
 }
 
 function updateHUD() {
   document.getElementById('score').textContent = state.score;
-  document.getElementById('hp').textContent = state.player.hp;
-  document.getElementById('stage').textContent = state.stage;
+  document.getElementById('hp').textContent = state.p.hp;
+  document.getElementById('wave').textContent = (state.wave+1) + '/' + WAVES.length;
+  document.getElementById('graze').textContent = state.graze;
 }
 
 function gameOver() {
   state.running = false;
   const ov = document.getElementById('overlay');
-  ov.innerHTML = `<h2>💀 격추됨</h2><img src="cards/${picked.id}.png" style="width:160px;border-radius:8px;opacity:0.7"><p style="color:#a89878">최종 ${state.score} · 스테이지 ${state.stage}</p><button onclick="location.reload()">다시</button>`;
+  ov.innerHTML = `<h2>💀 격추됨</h2><img src="cards/${picked.id}.png" style="width:160px;border-radius:8px;opacity:0.7"><p style="color:#a89878">점수 ${state.score} · 그레이즈 ${state.graze}</p><button onclick="location.reload()">다시</button>`;
+  ov.classList.add('show');
+}
+function win() {
+  state.running = false;
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `<h2>🏆 임무 완수</h2><img src="cards/${picked.id}.png" style="width:160px;border-radius:8px"><p style="color:#fbbf24">최종 ${state.score} · 그레이즈 ${state.graze}</p><button onclick="location.reload()">다시</button>`;
   ov.classList.add('show');
 }
 
@@ -417,8 +607,8 @@ fb.addEventListener('mousedown',  () => { firing=true; });
 fb.addEventListener('mouseup',    () => { firing=false; });
 
 const bb = document.getElementById('bomb-btn');
-bb.addEventListener('touchstart', e => { if(state) state.bombTrigger = true; e.preventDefault(); }, {passive:false});
-bb.addEventListener('click',      () => { if(state) state.bombTrigger = true; });
+bb.addEventListener('touchstart', e => { bombHit=true; e.preventDefault(); }, {passive:false});
+bb.addEventListener('click',      () => { bombHit=true; });
 
 document.getElementById('overlay-btn').addEventListener('click', newGame);
 document.getElementById('btn-new').addEventListener('click', () => location.reload());
