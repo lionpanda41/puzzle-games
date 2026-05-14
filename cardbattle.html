@@ -53,6 +53,8 @@ header button:hover{background:#3a2f25;border-color:var(--frame)}
 .minion.can-attack{border-color:#7ea564;box-shadow:0 0 10px #7ea564}
 .minion.exhausted{opacity:0.55}
 .minion.taunt{box-shadow:inset 0 0 0 3px #d4a857, 0 0 8px #d4a857}
+.minion.shield{outline:2px solid #ffffff;outline-offset:1px;box-shadow:0 0 12px rgba(255,255,255,0.6)}
+.minion.taunt.shield{box-shadow:inset 0 0 0 3px #d4a857, 0 0 12px rgba(255,255,255,0.7)}
 .minion .img-frame{height:48px;overflow:hidden;border-radius:4px;background:#0f0d09;margin-bottom:2px}
 .minion .img-frame img{width:100%;height:auto;display:block;margin-top:-8px;object-fit:cover}
 .minion .name{font-size:9px;font-weight:bold;color:var(--frame);text-align:center;line-height:1.1;padding:1px 0}
@@ -137,7 +139,7 @@ header button:hover{background:#3a2f25;border-color:var(--frame)}
   <div class="hero-row" id="foe-row">
     <div class="mana-disp"><div class="crystals" id="foe-mana-cryst"></div><span><span id="foe-mana">0</span>/<span id="foe-max-mana">0</span></span></div>
     <div class="hero-portrait foe" id="foe-hero">
-      <img src="world/characters/블랙마크.png?v=1778726196.707" alt="foe">
+      <img src="cards/08_blackmark.png" alt="foe">
       <div class="hero-hp">❤️ <span id="foe-hp">30</span></div>
     </div>
     <div class="deck-pile"><div class="deck-card"></div><small>덱 <span id="foe-deck">20</span></small></div>
@@ -153,7 +155,7 @@ header button:hover{background:#3a2f25;border-color:var(--frame)}
       도술의<br>화살<br><small>1피해</small>
     </button>
     <div class="hero-portrait you" id="you-hero">
-      <img src="world/characters/한유진.png?v=1778726196.707" alt="you">
+      <img src="cards/01_hanyujin.png" alt="you">
       <div class="hero-hp">❤️ <span id="you-hp">30</span></div>
     </div>
     <div class="mana-disp"><div class="crystals" id="you-mana-cryst"></div><span><span id="you-mana">0</span>/<span id="you-max-mana">0</span></span></div>
@@ -175,51 +177,50 @@ header button:hover{background:#3a2f25;border-color:var(--frame)}
 </div>
 
 <script>
-// ─── 캐릭터 이미지 매핑 ───────────────────────────
-const CHAR_IMG = {
-  '한유진':'world/characters/한유진.png',
-  '루나리아':'world/characters/루나리아.png',
-  '가르드린':'world/characters/가르드린.png',
-  '라이언':'world/characters/라이언.png',
-  '레이븐':'world/characters/레이븐.png',
-  '케이시':'world/characters/케이시.png',
-  '닐라스':'world/characters/닐라스.png',
-  '블랙마크':'world/characters/블랙마크.png',
-  '올드 레이븐':'world/characters/올드_레이븐.png',
-  '아나리':'world/characters/아나리.png?v=1778726196.707',
-};
-function imgOf(name) {
-  for (const k of Object.keys(CHAR_IMG)) if (name.includes(k)) return CHAR_IMG[k];
-  return '';
-}
-
-// ─── 카드 풀 ─────────────────────────────────
+// ─── 카드 풀 (30장 v4: 영웅 10 + 일반 미니언 15 + 주문 5) ───
 const CARDS = [
-  {id:'han',     name:'한유진',         type:'minion', cost:7, atk:8, hp:8, text:'전설 영웅 미니언', effect:'charge', rarity:'legendary'},
-  {id:'lun',     name:'루나리아',       type:'minion', cost:3, atk:3, hp:4, text:'전투의 함성: 대상 2피해', effect:'battlecry_dmg2', rarity:'rare'},
-  {id:'gar',     name:'가르드린',       type:'minion', cost:5, atk:5, hp:6, text:'도발',              effect:'taunt'},
-  {id:'lai',     name:'라이언',         type:'minion', cost:4, atk:4, hp:5, text:'전투의 함성: 영웅 4 회복', effect:'battlecry_heal4'},
-  {id:'rav',     name:'레이븐',         type:'minion', cost:6, atk:4, hp:7, text:'전투의 함성: 적 필드 2피해', effect:'battlecry_aoe2'},
-  {id:'cas',     name:'케이시',         type:'minion', cost:5, atk:6, hp:4, text:'돌진',              effect:'charge'},
-  {id:'nil',     name:'닐라스',         type:'minion', cost:6, atk:5, hp:7, text:'영웅 능력 2번 사용', effect:''},
-  {id:'old',     name:'올드 레이븐',    type:'minion', cost:8, atk:8, hp:8, text:'전투의 함성: 카드 2장 드로우', effect:'battlecry_draw2'},
-  {id:'ana',     name:'아나리',         type:'minion', cost:4, atk:3, hp:5, text:'적 비밀 무효 (사기방지)', effect:'antifraud'},
-  // 적/중립 미니언
-  {id:'orc',     name:'오크 전사',      type:'minion', cost:2, atk:3, hp:2, text:''},
-  {id:'goblin',  name:'고블린 일꾼',    type:'minion', cost:1, atk:1, hp:1, text:''},
-  {id:'wolf',    name:'늑대',           type:'minion', cost:2, atk:2, hp:2, text:''},
-  {id:'guard',   name:'성문 수호자',    type:'minion', cost:4, atk:2, hp:7, text:'도발', effect:'taunt'},
-  {id:'arch',    name:'엘프 궁수',      type:'minion', cost:3, atk:3, hp:2, text:'전투의 함성: 적 미니언 2피해', effect:'battlecry_zap'},
-  {id:'priest',  name:'사제',           type:'minion', cost:3, atk:1, hp:4, text:'전투의 함성: 영웅 2 회복', effect:'battlecry_heal2'},
-  {id:'imp',     name:'임프',           type:'minion', cost:1, atk:2, hp:1, text:''},
-  // 주문
-  {id:'arrow',   name:'마법의 화살',    type:'spell',  cost:1, text:'대상에 1피해',          effect:'dmg1'},
-  {id:'fireball',name:'화염구',         type:'spell',  cost:4, text:'대상에 6피해',          effect:'dmg6'},
-  {id:'heal',    name:'치유의 빛',      type:'spell',  cost:2, text:'영웅 6 회복',           effect:'heal6'},
-  {id:'aoe',     name:'소용돌이',       type:'spell',  cost:4, text:'적 모두 2피해',         effect:'aoe2'},
-  {id:'polymorph',name:'변신',          type:'spell',  cost:4, text:'미니언을 1/1 양으로',   effect:'poly'},
-  {id:'buff',    name:'축복',           type:'spell',  cost:2, text:'미니언 +2/+2',          effect:'buff22'},
+  // 영웅 (10) — type='minion'로 통일, hero 표시는 effect_key로
+  {id:'01_hanyujin',  name:'한유진',     type:'minion', cost:8, atk:7, hp:7, attr:'물리', effect_key:'charge',                 text:'돌진'},
+  {id:'02_lunaria',   name:'루나리아',   type:'minion', cost:5, atk:4, hp:5, attr:'바람', effect_key:'windfury',               text:'질풍'},
+  {id:'03_gardrin',   name:'가르드린',   type:'minion', cost:6, atk:4, hp:8, attr:'물리', effect_key:'taunt_divine_shield',    text:'도발, 신성한 방패'},
+  {id:'04_lion',      name:'라이언',     type:'minion', cost:4, atk:4, hp:4, attr:'물리', effect_key:'charge',                 text:'돌진'},
+  {id:'05_raven',     name:'레이븐',     type:'minion', cost:5, atk:3, hp:5, attr:'냉기', effect_key:'battlecry_dmg_target_3', text:'전투의 함성: 대상 3피해'},
+  {id:'06_kacy',      name:'케이시',     type:'minion', cost:7, atk:7, hp:6, attr:'화염', effect_key:'charge',                 text:'돌진'},
+  {id:'07_nilas',     name:'닐라스',     type:'minion', cost:9, atk:6, hp:8, attr:'자연', effect_key:'battlecry_ally_buff_1_1',text:'전투의 함성: 내 미니언 모두 +1/+1'},
+  {id:'08_blackmark', name:'블랙마크',   type:'minion', cost:6, atk:5, hp:5, attr:'암흑', effect_key:'battlecry_dmg_hero_3',   text:'전투의 함성: 적 영웅에 3피해'},
+  {id:'09_old_raven', name:'올드 레이븐',type:'minion', cost:10,atk:9, hp:9, attr:'화염', effect_key:'battlecry_draw_2',       text:'전투의 함성: 카드 2장 드로우'},
+  {id:'10_anari',     name:'아나리',     type:'minion', cost:3, atk:3, hp:3, attr:'물리', effect_key:'battlecry_draw_1',       text:'전투의 함성: 카드 1장 드로우'},
+  // 일반 미니언 (15)
+  {id:'e01_orc_warrior',   name:'오크 전사',     type:'minion', cost:2, atk:3, hp:2, attr:'물리', effect_key:'vanilla',                   text:''},
+  {id:'e02_goblin_worker', name:'고블린 일꾼',   type:'minion', cost:1, atk:1, hp:1, attr:'물리', effect_key:'vanilla',                   text:''},
+  {id:'e03_wolf',          name:'늑대',          type:'minion', cost:2, atk:2, hp:2, attr:'자연', effect_key:'vanilla',                   text:''},
+  {id:'e04_gate_guardian', name:'성문 수호자',   type:'minion', cost:4, atk:2, hp:7, attr:'물리', effect_key:'taunt',                     text:'도발'},
+  {id:'e05_elf_archer',    name:'엘프 궁수',     type:'minion', cost:3, atk:3, hp:2, attr:'바람', effect_key:'battlecry_dmg_minion_2',    text:'전투의 함성: 적 미니언 1체 2피해'},
+  {id:'e06_priest',        name:'사제',          type:'minion', cost:3, atk:1, hp:4, attr:'물리', effect_key:'battlecry_heal_hero_2',     text:'전투의 함성: 영웅 +2 생명'},
+  {id:'e07_imp',           name:'임프',          type:'minion', cost:1, atk:2, hp:1, attr:'암흑', effect_key:'vanilla',                   text:''},
+  {id:'e08_dwarf_miner',   name:'드워프 광부',   type:'minion', cost:2, atk:2, hp:3, attr:'물리', effect_key:'vanilla',                   text:''},
+  {id:'e09_mage_apprentice',name:'마법사 견습',  type:'minion', cost:2, atk:1, hp:3, attr:'냉기', effect_key:'battlecry_dmg_target_1',    text:'전투의 함성: 대상 1피해'},
+  {id:'e10_berserker',     name:'광전사',        type:'minion', cost:4, atk:5, hp:3, attr:'화염', effect_key:'vanilla',                   text:''},
+  {id:'e11_hunter',        name:'사냥꾼',        type:'minion', cost:3, atk:3, hp:3, attr:'바람', effect_key:'vanilla',                   text:''},
+  {id:'e12_rogue',         name:'도적',          type:'minion', cost:2, atk:3, hp:1, attr:'암흑', effect_key:'vanilla',                   text:''},
+  {id:'e13_giant_spider',  name:'거대 거미',     type:'minion', cost:1, atk:1, hp:2, attr:'자연', effect_key:'vanilla',                   text:''},
+  {id:'e14_fire_elemental',name:'화염 정령',     type:'minion', cost:3, atk:4, hp:2, attr:'화염', effect_key:'vanilla',                   text:''},
+  {id:'e15_ice_elemental', name:'얼음 정령',     type:'minion', cost:4, atk:3, hp:4, attr:'냉기', effect_key:'vanilla',                   text:''},
+  // 주문 (5)
+  {id:'s01_magic_arrow',   name:'마법의 화살',   type:'spell',  cost:1, attr:'화염', effect_key:'spell_dmg_target_1',  text:'주문: 대상 1피해'},
+  {id:'s02_fireball',      name:'화염구',        type:'spell',  cost:4, attr:'화염', effect_key:'spell_dmg_target_6',  text:'주문: 대상 6피해'},
+  {id:'s03_heal',          name:'치유의 빛',     type:'spell',  cost:2, attr:'자연', effect_key:'spell_heal_hero_6',   text:'주문: 영웅 6 회복'},
+  {id:'s04_frost_bolt',    name:'얼음 화살',     type:'spell',  cost:2, attr:'냉기', effect_key:'spell_dmg_target_2',  text:'주문: 대상 2피해'},
+  {id:'s05_shadow_strike', name:'그림자 일격',   type:'spell',  cost:3, attr:'암흑', effect_key:'spell_dmg_target_4',  text:'주문: 대상 4피해'},
 ];
+
+function imgOf(card) { return `cards/${card.id}.png`; }
+
+// 주문이 대상 지정 필요한지
+function needsTarget(c) {
+  if (c.type !== 'spell') return false;
+  return c.effect_key.startsWith('spell_dmg_target');
+}
 
 // ─── 상태 ─────────────────────────────────────
 let state = null;
@@ -254,7 +255,7 @@ function startTurn(side) {
   p.mana = p.maxMana;
   p.powerUsed = false;
   if (p.deck.length > 0) p.hand.push(p.deck.pop());
-  p.field.forEach(m => m.exhausted = false);
+  p.field.forEach(m => { m.exhausted = false; m._attacksLeft = 0; });
   state.turn = side;
   log(side==='you'?'── 내 턴 ──':'── 적 턴 ──', 'sys');
 }
@@ -280,16 +281,37 @@ function foeAI() {
     if (!playable.length) break;
     playable.sort((a,b)=>b.cost-a.cost);
     const c = playable[0];
-    if (c.type === 'minion') playMinion('foe', c);
-    else castSpell('foe', c, c.effect.startsWith('heal') ? {side:'foe', target:'hero'} : c.effect.startsWith('aoe') ? {side:'you'} : {side:'you', target:'hero'});
+    if (c.type === 'minion') {
+      // 전투의 함성 대상 자동 선택
+      let tgt = null;
+      if (battlecryNeedsTarget(c.effect_key)) {
+        if (state.you.field.length) tgt = {side:'you', target:'minion', idx:0};
+        else tgt = {side:'you', target:'hero'};
+      }
+      playMinion('foe', c, tgt);
+    } else if (c.type === 'spell') {
+      const k = c.effect_key;
+      if (k.startsWith('spell_heal_hero')) castSpell('foe', c, null);
+      else if (k.startsWith('spell_dmg_target')) {
+        const tgt = state.you.field[0]
+          ? {side:'you', target:'minion', idx:0}
+          : {side:'you', target:'hero'};
+        castSpell('foe', c, tgt);
+      } else castSpell('foe', c, null);
+    }
   }
   for (const m of [...p.field]) {
     if (m.exhausted) continue;
-    const taunts = state.you.field.filter(x => x.effect === 'taunt');
-    const target = taunts[0] || (Math.random() < 0.5 ? state.you.field[0] : null);
-    if (target) attackMinion('foe', m, target);
-    else attackHero('foe', m);
-    if (state.over) return;
+    const maxAtk = hasWindfury(m) ? 2 : 1;
+    while ((m._attacksLeft||0) < maxAtk && !m.exhausted) {
+      const taunts = state.you.field.filter(hasTaunt);
+      let target;
+      if (taunts.length) target = taunts[0];
+      else target = Math.random() < 0.4 ? state.you.field[0] : null;
+      if (target) attackMinion('foe', m, target);
+      else { attackHero('foe', m); break; }
+      if (state.over) return;
+    }
   }
   if (p.mana >= 2 && !p.powerUsed) {
     p.mana -= 2; p.powerUsed = true;
@@ -300,58 +322,111 @@ function foeAI() {
   setTimeout(() => { if (!state.over) { startTurn('you'); render(); } }, 800);
 }
 
-function playMinion(side, card) {
+// ─── 효과 키워드 헬퍼 ─────────────────────────
+function hasCharge(c)   { return c.effect_key === 'charge'; }
+function hasTaunt(c)    { return c.effect_key === 'taunt' || c.effect_key === 'taunt_divine_shield'; }
+function hasShield(c)   { return c._divineShield === true; }
+function hasWindfury(c) { return c.effect_key === 'windfury'; }
+
+function applyDamageToMinion(m, dmg) {
+  if (m._divineShield) { m._divineShield = false; log(`${m.name} 신성한 방패 소진`, 'sys'); return; }
+  m.hp -= dmg;
+}
+
+// ─── 전투의 함성 실행 ─────────────────────────
+function executeBattlecry(side, card, target) {
   const p = state[side];
   const opp = side === 'you' ? state.foe : state.you;
+  const k = card.effect_key;
+  const m = k.match(/^battlecry_dmg_target_(\d+)$/);
+  if (m && target) {
+    const d = +m[1];
+    if (target.target === 'hero') state[target.side].hp -= d;
+    else if (target.target === 'minion') {
+      const tm = state[target.side].field[target.idx];
+      if (tm) applyDamageToMinion(tm, d);
+    }
+    return;
+  }
+  const mm = k.match(/^battlecry_dmg_minion_(\d+)$/);
+  if (mm && target && target.target === 'minion') {
+    const tm = state[target.side].field[target.idx];
+    if (tm) applyDamageToMinion(tm, +mm[1]);
+    return;
+  }
+  const mh = k.match(/^battlecry_dmg_hero_(\d+)$/);
+  if (mh) { opp.hp -= +mh[1]; return; }
+  const ma = k.match(/^battlecry_aoe_(\d+)$/);
+  if (ma) { opp.field.forEach(x => applyDamageToMinion(x, +ma[1])); return; }
+  const mhe = k.match(/^battlecry_heal_hero_(\d+)$/);
+  if (mhe) { p.hp = Math.min(p.maxHp, p.hp + +mhe[1]); return; }
+  const md = k.match(/^battlecry_draw_(\d+)$/);
+  if (md) { for (let i=0;i<+md[1];i++) if (p.deck.length) p.hand.push(p.deck.pop()); return; }
+  const mb = k.match(/^battlecry_ally_buff_(\d+)_(\d+)$/);
+  if (mb) {
+    const [x, y] = [+mb[1], +mb[2]];
+    p.field.forEach(f => { if (f !== card) { f.atk += x; f.hp += y; } });
+    return;
+  }
+}
+
+// 전투의 함성이 대상 지정이 필요한가
+function battlecryNeedsTarget(k) {
+  return /^battlecry_dmg_(target|minion)_/.test(k);
+}
+
+function playMinion(side, card, target) {
+  const p = state[side];
   const idx = p.hand.indexOf(card);
   if (idx < 0) return;
   if (card.cost > p.mana) return;
   p.mana -= card.cost;
   p.hand.splice(idx, 1);
-  card.exhausted = card.effect !== 'charge';
+  card.exhausted = !hasCharge(card);
+  card._attacksLeft = 0;
+  if (hasWindfury(card)) card._windfury = true;
+  if (card.effect_key === 'taunt_divine_shield') card._divineShield = true;
   p.field.push(card);
   log(`${side==='you'?'내':'적'} ${card.name} 소환 (${card.atk}/${card.hp})`, side);
-  // 전투의 함성
-  if (card.effect === 'battlecry_heal4') { p.hp = Math.min(p.maxHp, p.hp+4); }
-  else if (card.effect === 'battlecry_heal2') { p.hp = Math.min(p.maxHp, p.hp+2); }
-  else if (card.effect === 'battlecry_draw2') { for (let i=0;i<2;i++) if (p.deck.length) p.hand.push(p.deck.pop()); }
-  else if (card.effect === 'battlecry_aoe2') { opp.field.forEach(m => m.hp -= 2); cleanupField(); }
-  else if (card.effect === 'battlecry_zap' && opp.field.length) { opp.field[0].hp -= 2; cleanupField(); }
-  checkOver();
-}
-
-function castSpell(side, card, target) {
-  const p = state[side];
-  const idx = p.hand.indexOf(card);
-  if (idx >= 0) { p.hand.splice(idx, 1); p.mana -= card.cost; }
-  log(`${side==='you'?'내':'적'} ${card.name} 시전`, side);
-  const e = card.effect;
-  if (e === 'dmg1' || e === 'dmg6') {
-    const d = e === 'dmg6' ? 6 : 1;
-    if (target.target === 'hero') state[target.side].hp -= d;
-    else if (target.target === 'minion') {
-      const m = state[target.side].field[target.idx];
-      if (m) m.hp -= d;
-    }
-  } else if (e === 'heal6') {
-    p.hp = Math.min(p.maxHp, p.hp + 6);
-  } else if (e === 'aoe2') {
-    state[target.side].field.forEach(m => m.hp -= 2);
-  } else if (e === 'poly' && target.target === 'minion') {
-    const m = state[target.side].field[target.idx];
-    if (m) { m.atk=1; m.hp=1; m.name='양'; m.effect=''; m.text=''; }
-  } else if (e === 'buff22' && target.target === 'minion') {
-    const m = state[target.side].field[target.idx];
-    if (m) { m.atk+=2; m.hp+=2; }
+  if (card.effect_key && card.effect_key.startsWith('battlecry_')) {
+    executeBattlecry(side, card, target);
   }
   cleanupField();
   checkOver();
 }
 
+function castSpell(side, card, target) {
+  const p = state[side];
+  const opp = side === 'you' ? state.foe : state.you;
+  const idx = p.hand.indexOf(card);
+  if (idx >= 0) { p.hand.splice(idx, 1); p.mana -= card.cost; }
+  log(`${side==='you'?'내':'적'} ${card.name} 시전`, side);
+  const k = card.effect_key;
+  const m = k.match(/^spell_dmg_target_(\d+)$/);
+  if (m && target) {
+    const d = +m[1];
+    if (target.target === 'hero') state[target.side].hp -= d;
+    else if (target.target === 'minion') {
+      const tm = state[target.side].field[target.idx];
+      if (tm) applyDamageToMinion(tm, d);
+    }
+  }
+  const mh = k.match(/^spell_heal_hero_(\d+)$/);
+  if (mh) { p.hp = Math.min(p.maxHp, p.hp + +mh[1]); }
+  cleanupField();
+  checkOver();
+}
+
 function attackMinion(side, attacker, target) {
-  attacker.hp -= target.atk;
-  target.hp -= attacker.atk;
-  attacker.exhausted = true;
+  // 신성한 방패 우선
+  const attackerDmg = target.atk;
+  const targetDmg = attacker.atk;
+  applyDamageToMinion(target, targetDmg);
+  applyDamageToMinion(attacker, attackerDmg);
+  // 질풍: attacksLeft 관리
+  attacker._attacksLeft = (attacker._attacksLeft||0) + 1;
+  const maxAtk = hasWindfury(attacker) ? 2 : 1;
+  if (attacker._attacksLeft >= maxAtk) attacker.exhausted = true;
   log(`${side==='you'?'내':'적'} ${attacker.name} → ${target.name}`, side);
   cleanupField();
 }
@@ -359,8 +434,10 @@ function attackMinion(side, attacker, target) {
 function attackHero(side, attacker) {
   const target = side === 'you' ? state.foe : state.you;
   target.hp -= attacker.atk;
-  attacker.exhausted = true;
-  log(`${side==='you'?'내':'적'} ${attacker.name} → 적 영웅 ${attacker.atk}피해`, side);
+  attacker._attacksLeft = (attacker._attacksLeft||0) + 1;
+  const maxAtk = hasWindfury(attacker) ? 2 : 1;
+  if (attacker._attacksLeft >= maxAtk) attacker.exhausted = true;
+  log(`${side==='you'?'내':'적'} ${attacker.name} → ${side==='you'?'적':'내'} 영웅 ${attacker.atk}피해`, side);
   checkOver();
 }
 
@@ -411,16 +488,22 @@ function onDrop(side, kind, idx) {
   if (c.cost > state.you.mana) { endDrag(); return; }
   if (c.type === 'minion') {
     if (side === 'you' && kind === 'field') {
-      playMinion('you', c);
+      // 전투의 함성 대상 필요한 경우 — 일단 자동 선택 (적 필드 첫번째 or 적 영웅)
+      let tgt = null;
+      if (battlecryNeedsTarget(c.effect_key)) {
+        if (state.foe.field.length) tgt = {side:'foe', target:'minion', idx:0};
+        else tgt = {side:'foe', target:'hero'};
+      }
+      playMinion('you', c, tgt);
     }
   } else if (c.type === 'spell') {
-    const e = c.effect;
-    if (['dmg1','dmg6','poly','buff22'].includes(e)) {
-      // 대상 필요
+    const k = c.effect_key;
+    if (k.startsWith('spell_dmg_target')) {
       if (kind === 'hero') castSpell('you', c, {side, target:'hero'});
       else if (kind === 'minion') castSpell('you', c, {side, target:'minion', idx});
-    } else if (e === 'heal6') castSpell('you', c, {side:'you', target:'hero'});
-    else if (e === 'aoe2') castSpell('you', c, {side:'foe'});
+    } else if (k.startsWith('spell_heal_hero')) {
+      castSpell('you', c, null);
+    }
   }
   endDrag();
   render();
@@ -439,12 +522,12 @@ function onAttackDrop(side, kind, idx) {
   if (!drag || !drag.attackMode) return;
   const m = drag.minion;
   if (side === 'foe' && kind === 'minion') {
-    const taunts = state.foe.field.filter(x => x.effect === 'taunt');
+    const taunts = state.foe.field.filter(hasTaunt);
     const tgt = state.foe.field[idx];
     if (taunts.length && !taunts.includes(tgt)) { log('도발 미니언 먼저', 'sys'); endDrag(); return; }
     attackMinion('you', m, tgt);
   } else if (side === 'foe' && kind === 'hero') {
-    const taunts = state.foe.field.filter(x => x.effect === 'taunt');
+    const taunts = state.foe.field.filter(hasTaunt);
     if (taunts.length) { log('도발 먼저', 'sys'); endDrag(); return; }
     attackHero('you', m);
   }
@@ -473,8 +556,10 @@ function manaCrystalsHTML(cur, max) {
 }
 
 function renderMinionHTML(m, side, idx) {
-  const img = imgOf(m.name);
-  return `<div class="minion ${side==='you'?(m.exhausted?'exhausted':'can-attack'):''} ${m.effect==='taunt'?'taunt':''}" data-side="${side}" data-idx="${idx}">
+  const img = imgOf(m);
+  const tauntCls  = hasTaunt(m)   ? ' taunt' : '';
+  const shieldCls = m._divineShield ? ' shield' : '';
+  return `<div class="minion ${side==='you'?(m.exhausted?'exhausted':'can-attack'):''}${tauntCls}${shieldCls}" data-side="${side}" data-idx="${idx}">
     ${img?`<div class="img-frame"><img src="${img}"></div>`:''}
     <div class="name">${m.name}</div>
     <div class="stats"><span class="atk">⚔️${m.atk}</span><span class="hp-num">❤️${m.hp}</span></div>
@@ -482,10 +567,10 @@ function renderMinionHTML(m, side, idx) {
 }
 
 function renderHandCardHTML(c, preview=false) {
-  const img = c.type==='minion' ? imgOf(c.name) : '';
+  const img = imgOf(c);
   return `<div class="hand-card ${c.cost <= state.you.mana && state.turn === 'you' ? 'playable' : 'unplayable'}">
     <div class="cost-pip">${c.cost}</div>
-    ${img ? `<div class="img-frame"><img src="${img}"></div>` : `<div class="spell-icon">🔮</div>`}
+    ${c.type==='minion' ? `<div class="img-frame"><img src="${img}"></div>` : `<div class="spell-icon"><img src="${img}" style="width:100%;height:100%;object-fit:cover;border-radius:4px"></div>`}
     <div class="name">${c.name}</div>
     <div class="body">${c.text||''}</div>
     ${c.type==='minion' ? `<div class="stats"><span class="atk">⚔️${c.atk}</span><span class="hp-num">❤️${c.hp}</span></div>` : `<div class="stats" style="justify-content:center;color:#88c0d0">주문</div>`}
@@ -520,12 +605,11 @@ function render() {
       });
       el.addEventListener('mouseup', e => {
         if (drag && drag.attackMode && s === 'foe') onAttackDrop('foe','minion',i);
-        else if (drag && drag.card && s === 'foe' && ['dmg1','dmg6','poly','buff22'].includes(drag.card.effect)) onDrop('foe','minion',i);
-        else if (drag && drag.card && s === 'you' && drag.card.effect === 'buff22') onDrop('you','minion',i);
+        else if (drag && drag.card && s === 'foe' && drag.card.effect_key && drag.card.effect_key.startsWith('spell_dmg_target')) onDrop('foe','minion',i);
       });
       el.addEventListener('mouseenter', () => {
         if (drag && drag.attackMode && s === 'foe') el.classList.add('drop-target');
-        if (drag && drag.card && s === 'foe' && ['dmg1','dmg6','poly'].includes(drag.card.effect)) el.classList.add('drop-target');
+        if (drag && drag.card && s === 'foe' && drag.card.effect_key && drag.card.effect_key.startsWith('spell_dmg_target')) el.classList.add('drop-target');
       });
       el.addEventListener('mouseleave', () => el.classList.remove('drop-target'));
     });
@@ -554,11 +638,11 @@ document.addEventListener('mouseup', e => {
   for (const el of elements) {
     if (el.id === 'foe-hero' || el.closest('#foe-hero')) {
       if (drag.attackMode) onAttackDrop('foe','hero');
-      else if (drag.card && ['dmg1','dmg6'].includes(drag.card.effect)) onDrop('foe','hero');
+      else if (drag.card && drag.card.effect_key && drag.card.effect_key.startsWith('spell_dmg_target')) onDrop('foe','hero');
       handled = true; break;
     }
     if (el.id === 'you-hero' || el.closest('#you-hero')) {
-      if (drag.card && drag.card.effect === 'heal6') onDrop('you','hero');
+      if (drag.card && drag.card.effect_key && drag.card.effect_key.startsWith('spell_heal_hero')) onDrop('you','hero');
       handled = true; break;
     }
     if (el.id === 'you-field' || el.closest('#you-field')) {
@@ -572,7 +656,7 @@ document.addEventListener('mouseup', e => {
 
 // hero 드롭 영역 mouseenter (시각 표시)
 document.getElementById('foe-hero').addEventListener('mouseenter', () => {
-  if (drag && (drag.attackMode || (drag.card && ['dmg1','dmg6'].includes(drag.card.effect))))
+  if (drag && (drag.attackMode || (drag.card && drag.card.effect_key && drag.card.effect_key.startsWith('spell_dmg_target'))))
     document.getElementById('foe-hero').classList.add('drop-target');
 });
 document.getElementById('foe-hero').addEventListener('mouseleave', () => document.getElementById('foe-hero').classList.remove('drop-target'));
