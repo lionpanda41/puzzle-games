@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>에스카르타 블록깨기</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{background:#000;color:#e2d5b8;font-family:'Noto Sans KR',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center;touch-action:none}
+header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 14px;background:rgba(15,13,9,0.85);border-bottom:1px solid #5a4030;z-index:30;font-size:12px;align-items:center}
+header b{color:#fbbf24;font-size:14px;letter-spacing:2px}
+header .stats{display:flex;gap:14px}
+header button{background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:5px 10px;border-radius:4px;font-size:11px}
+
+#stage{position:relative;width:100%;max-width:480px;height:100vh;margin:0 auto;background:#0a0805;overflow:hidden}
+#bg{position:absolute;inset:0;background-size:cover;background-position:center top;background-repeat:no-repeat;filter:brightness(0.85)}
+#bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,0.7))}
+
+#blocks{position:absolute;inset:40px 0 200px 0;display:grid;grid-template-columns:repeat(8,1fr);grid-auto-rows:24px;gap:2px;padding:0 8px;z-index:2}
+.block{background:linear-gradient(135deg,var(--c1),var(--c2));border:1px solid rgba(0,0,0,0.4);border-radius:3px;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.3),0 1px 0 rgba(255,255,255,0.1);transition:opacity 0.15s, transform 0.15s}
+.block.hit{opacity:0;transform:scale(0.6) rotate(15deg)}
+/* 단계별 옷 색 — 1단:갑옷(회청), 2단:겉옷(갈색), 3단:속옷(연황), 4단:없음(클리어) */
+.lv1 .block{--c1:#7090b0;--c2:#3a5a78}
+.lv2 .block{--c1:#a87830;--c2:#5a4020}
+.lv3 .block{--c1:#fde0a8;--c2:#b89870}
+
+#paddle{position:absolute;width:90px;height:14px;background:linear-gradient(180deg,#fbbf24,#a87830);border:2px solid #5a4030;border-radius:8px;box-shadow:0 0 12px rgba(251,191,36,0.5);z-index:5;bottom:80px;left:50%;transform:translateX(-50%)}
+#ball{position:absolute;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,#88c0d0);box-shadow:0 0 10px #88c0d0;z-index:6}
+
+#hud{position:fixed;bottom:0;left:0;right:0;background:rgba(15,13,9,0.9);border-top:1px solid #5a4030;padding:10px;display:flex;justify-content:space-between;align-items:center;z-index:20;font-size:12px}
+#hud .lvl{font-size:18px;color:#fbbf24;letter-spacing:3px}
+#hud .lives{color:#bf616a;font-size:16px}
+
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;z-index:50;padding:20px;text-align:center}
+#overlay.show{display:flex}
+#overlay h2{color:#fbbf24;font-size:24px}
+#overlay button{background:#1d4ed8;color:#fff;border:0;padding:12px 22px;border-radius:6px;font-size:15px;cursor:pointer}
+#overlay .char-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#overlay .pick{background:#2d2620;border:2px solid #5a4030;border-radius:6px;padding:8px;cursor:pointer;text-align:center}
+#overlay .pick img{width:90px;height:90px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px}
+#overlay .pick.active{border-color:#fbbf24;background:#3a2f25}
+#overlay .pick .name{font-size:12px;color:#fbbf24}
+
+#start-msg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fbbf24;font-size:14px;text-align:center;background:rgba(15,13,9,0.85);padding:14px 20px;border-radius:8px;z-index:7;animation:blink 1.5s infinite}
+@keyframes blink{50%{opacity:0.4}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg"></div>
+  <div id="blocks"></div>
+  <div id="paddle"></div>
+  <div id="ball"></div>
+  <div id="start-msg">탭/클릭 — 시작</div>
+
+  <header>
+    <b>🧱 블록깨기</b>
+    <div class="stats">
+      <span class="lvl">LV <b id="lv">1</b></span>
+      <span>점수 <b id="score">0</b></span>
+      <span class="lives">❤ <b id="lives">3</b></span>
+    </div>
+    <button id="btn-new">새</button>
+  </header>
+
+  <div id="hud">
+    <span>← 드래그/터치 →</span>
+    <span id="status">캐릭터: <b id="char-name">루나리아</b></span>
+  </div>
+</div>
+
+<div id="overlay" class="show">
+  <h2>🧱 에스카르타 블록깨기</h2>
+  <p style="color:#a89878;font-size:13px">캐릭터 선택 · 4단계 클리어</p>
+  <div class="char-picker" id="char-picker"></div>
+  <button id="overlay-btn">시작</button>
+</div>
+
+<script>
+const CHARS = [
+  {id:'02_lunaria',  name:'루나리아',  desc:'엘프 활사'},
+  {id:'07_nilas',    name:'닐라스',    desc:'엘프 여왕'},
+  {id:'10_anari',    name:'아나리',    desc:'사기 판별사'},
+];
+
+let state, picked = CHARS[0];
+
+function pickerInit() {
+  const pk = document.getElementById('char-picker');
+  pk.innerHTML = '';
+  CHARS.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'pick' + (i===0?' active':'');
+    div.innerHTML = `<img src="cards/${c.id}.png"><div class="name">${c.name}</div><div style="font-size:10px;color:#a89878">${c.desc}</div>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.pick').forEach(p => p.classList.remove('active'));
+      div.classList.add('active');
+      picked = c;
+    });
+    pk.appendChild(div);
+  });
+}
+pickerInit();
+
+function startGame() {
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('bg').style.backgroundImage = `url(cards/${picked.id}.png)`;
+  document.getElementById('char-name').textContent = picked.name;
+  state = {
+    lv: 1, score: 0, lives: 3,
+    paddleX: window.innerWidth/2,
+    ballX: window.innerWidth/2, ballY: 0,
+    vx: 0, vy: 0,
+    running: false,
+    blocks: [],
+  };
+  buildBlocks();
+  positionAll();
+}
+
+function buildBlocks() {
+  const grid = document.getElementById('blocks');
+  grid.className = 'lv' + state.lv;
+  grid.innerHTML = '';
+  state.blocks = [];
+  const rows = 5 + state.lv;  // 단계 올라갈수록 더 많이
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < 8; c++) {
+      const div = document.createElement('div');
+      div.className = 'block';
+      grid.appendChild(div);
+      state.blocks.push({el: div, alive: true});
+    }
+  }
+}
+
+function positionAll() {
+  const stage = document.getElementById('stage').getBoundingClientRect();
+  const paddle = document.getElementById('paddle');
+  const ball = document.getElementById('ball');
+  state.paddleX = Math.max(50, Math.min(stage.width-50, state.paddleX));
+  paddle.style.left = (state.paddleX - 45) + 'px';
+  paddle.style.right = 'auto';
+  paddle.style.transform = '';
+  state.ballX = state.ballX || stage.width/2;
+  state.ballY = state.running ? state.ballY : (stage.height - 100);
+  ball.style.left = (state.ballX - 7) + 'px';
+  ball.style.top = (state.ballY - 7) + 'px';
+}
+
+function launchBall() {
+  if (state.running) return;
+  state.running = true;
+  state.vx = (Math.random()*4 - 2);
+  state.vy = -5;
+  document.getElementById('start-msg').style.display = 'none';
+}
+
+function tick() {
+  if (!state || !state.running) { requestAnimationFrame(tick); return; }
+  const stage = document.getElementById('stage').getBoundingClientRect();
+  state.ballX += state.vx;
+  state.ballY += state.vy;
+
+  // 벽
+  if (state.ballX < 7) { state.ballX = 7; state.vx = -state.vx; }
+  if (state.ballX > stage.width - 7) { state.ballX = stage.width - 7; state.vx = -state.vx; }
+  if (state.ballY < 47) { state.ballY = 47; state.vy = -state.vy; }
+
+  // 바닥 — 죽음
+  if (state.ballY > stage.height - 30) {
+    state.lives--;
+    state.running = false;
+    if (state.lives <= 0) {
+      overlay('💀 게임 오버', `점수 ${state.score}`);
+      return;
+    }
+    state.ballX = state.paddleX;
+    state.ballY = stage.height - 100;
+    document.getElementById('start-msg').style.display = 'block';
+    updateHUD();
+    positionAll();
+    requestAnimationFrame(tick);
+    return;
+  }
+
+  // 패들
+  const py = stage.height - 80;  // bottom 80
+  if (state.ballY > py - 7 && state.ballY < py + 14 &&
+      state.ballX > state.paddleX - 50 && state.ballX < state.paddleX + 50) {
+    state.ballY = py - 7;
+    state.vy = -Math.abs(state.vy);
+    state.vx += (state.ballX - state.paddleX) * 0.08;
+  }
+
+  // 블록
+  const blockArea = document.getElementById('blocks').getBoundingClientRect();
+  const stageBox = document.getElementById('stage').getBoundingClientRect();
+  const relX = state.ballX, relY = state.ballY;
+  for (const b of state.blocks) {
+    if (!b.alive) continue;
+    const r = b.el.getBoundingClientRect();
+    const x1 = r.left - stageBox.left, y1 = r.top - stageBox.top;
+    const x2 = r.right - stageBox.left, y2 = r.bottom - stageBox.top;
+    if (relX > x1-7 && relX < x2+7 && relY > y1-7 && relY < y2+7) {
+      b.alive = false;
+      b.el.classList.add('hit');
+      state.score += 10;
+      state.vy = -state.vy;
+      break;
+    }
+  }
+
+  // 클리어
+  if (state.blocks.every(b => !b.alive)) {
+    if (state.lv >= 3) {
+      overlay('🎉 완전 클리어!', `${picked.name} · 점수 ${state.score}`);
+      return;
+    }
+    state.lv++;
+    state.running = false;
+    state.ballX = stage.width/2; state.ballY = stage.height - 100;
+    document.getElementById('start-msg').style.display = 'block';
+    document.getElementById('start-msg').textContent = `LV ${state.lv} — 탭 시작`;
+    buildBlocks();
+    updateHUD();
+  }
+
+  positionAll();
+  updateHUD();
+  requestAnimationFrame(tick);
+}
+function updateHUD() {
+  document.getElementById('lv').textContent = state.lv;
+  document.getElementById('score').textContent = state.score;
+  document.getElementById('lives').textContent = state.lives;
+}
+function overlay(t, sub) {
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `<h2>${t}</h2><p style="color:#a89878">${sub}</p><img src="cards/${picked.id}.png" style="width:200px;border-radius:8px"><button onclick="location.reload()">다시</button>`;
+  ov.classList.add('show');
+}
+
+// 입력
+function moveTo(clientX) {
+  if (!state) return;
+  const stageBox = document.getElementById('stage').getBoundingClientRect();
+  state.paddleX = clientX - stageBox.left;
+  positionAll();
+  if (!state.running) {
+    state.ballX = state.paddleX;
+    positionAll();
+  }
+}
+document.getElementById('stage').addEventListener('mousemove', e => moveTo(e.clientX));
+document.getElementById('stage').addEventListener('touchmove', e => { moveTo(e.touches[0].clientX); e.preventDefault(); }, {passive:false});
+document.getElementById('stage').addEventListener('click', launchBall);
+document.getElementById('stage').addEventListener('touchstart', launchBall);
+
+document.getElementById('overlay-btn').addEventListener('click', startGame);
+document.getElementById('btn-new').addEventListener('click', () => location.reload());
+
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

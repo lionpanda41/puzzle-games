@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>에스카르타 마녀비행</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{background:#000;color:#e2d5b8;font-family:'Noto Sans KR',sans-serif;overflow:hidden;height:100vh;display:flex;justify-content:center;touch-action:none}
+header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 14px;background:rgba(15,13,9,0.85);border-bottom:1px solid #5a4030;z-index:30;font-size:12px;align-items:center}
+header b{color:#fbbf24;font-size:14px;letter-spacing:2px}
+header .stats{display:flex;gap:14px}
+header button{background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:5px 10px;border-radius:4px;font-size:11px}
+canvas{display:block;background:linear-gradient(180deg,#0a0820 0%,#1a1612 80%,#2d2620 100%);max-height:100vh}
+
+#joystick{position:fixed;left:20px;bottom:30px;width:120px;height:120px;border-radius:50%;background:rgba(15,13,9,0.4);border:2px solid rgba(251,191,36,0.4);z-index:25;touch-action:none}
+#joystick .knob{position:absolute;width:60px;height:60px;border-radius:50%;background:rgba(251,191,36,0.5);border:2px solid #fbbf24;top:30px;left:30px;transition:transform 0.05s}
+
+#fire-btn{position:fixed;right:30px;bottom:50px;width:90px;height:90px;border-radius:50%;background:rgba(191,97,106,0.5);border:3px solid #bf616a;color:#fff;font-size:16px;font-weight:bold;z-index:25;display:flex;align-items:center;justify-content:center;letter-spacing:2px}
+
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;z-index:50;text-align:center;padding:20px}
+#overlay.show{display:flex}
+#overlay h2{color:#fbbf24;font-size:24px}
+#overlay button{background:#1d4ed8;color:#fff;border:0;padding:12px 22px;border-radius:6px;font-size:15px;cursor:pointer}
+.char-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:340px}
+.pick{background:#2d2620;border:2px solid #5a4030;border-radius:6px;padding:8px;cursor:pointer}
+.pick img{width:90px;height:90px;object-fit:cover;border-radius:4px;display:block;margin:0 auto 4px}
+.pick.active{border-color:#fbbf24;background:#3a2f25}
+.pick .name{font-size:11px;color:#fbbf24;text-align:center}
+.pick .desc{font-size:9px;color:#a89878;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <b>🧙‍♀️ 마녀비행</b>
+  <div class="stats">
+    <span>점수 <b id="score">0</b></span>
+    <span>HP <b id="hp">100</b></span>
+    <span>스테이지 <b id="stage">1</b></span>
+  </div>
+  <button id="btn-new">새</button>
+</header>
+
+<canvas id="cv" width="420" height="700"></canvas>
+
+<div id="joystick"><div class="knob" id="knob"></div></div>
+<button id="fire-btn">FIRE</button>
+
+<div id="overlay" class="show">
+  <h2>🧙‍♀️ 에스카르타 마녀비행</h2>
+  <p style="color:#a89878;font-size:13px">건버드 풍 종스크롤 슈팅<br>캐릭터별 다른 무기</p>
+  <div class="char-picker" id="char-picker"></div>
+  <p style="font-size:11px;color:#a89878">조작: 좌측 조이스틱 이동 / 우측 FIRE / 키보드: WASD+Space</p>
+  <button id="overlay-btn">시작</button>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+const PICKS = [
+  {id:'02_lunaria', name:'루나리아', desc:'엘프 활사', weapon:'arrow', col:'#7ec564', dmg:1, rate:8},
+  {id:'07_nilas',   name:'닐라스',   desc:'엘프 여왕', weapon:'magic', col:'#d4a857', dmg:2, rate:12},
+  {id:'10_anari',   name:'아나리',   desc:'사기 판별사', weapon:'beam',  col:'#fbbf24', dmg:1, rate:5},
+];
+let picked = PICKS[0];
+
+const imgs = {};
+for (const p of PICKS) {
+  imgs[p.id] = new Image();
+  imgs[p.id].src = `cards/${p.id}.png`;
+}
+
+function pickerInit() {
+  const pk = document.getElementById('char-picker');
+  pk.innerHTML = '';
+  PICKS.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'pick' + (i===0?' active':'');
+    div.innerHTML = `<img src="cards/${p.id}.png"><div class="name">${p.name}</div><div class="desc">${p.desc}</div>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.pick').forEach(p => p.classList.remove('active'));
+      div.classList.add('active');
+      picked = p;
+    });
+    pk.appendChild(div);
+  });
+}
+pickerInit();
+
+let state, keys = {}, joy = {dx:0, dy:0, active:false}, firing = false;
+
+function newGame() {
+  document.getElementById('overlay').classList.remove('show');
+  state = {
+    player: {x: W/2, y: H-100, hp: 100, maxHp: 100, r: 18, cd: 0},
+    bullets: [],
+    enemies: [],
+    eBullets: [],
+    particles: [],
+    score: 0, stage: 1,
+    spawnTimer: 0,
+    bossActive: false,
+    running: true,
+  };
+  requestAnimationFrame(tick);
+}
+
+function spawnEnemy() {
+  const types = [
+    {hp: 2, speed: 1.2, r: 16, fireRate: 80, color:'#bf616a', score: 50},
+    {hp: 4, speed: 0.8, r: 22, fireRate: 60, color:'#a87830', score: 100},
+  ];
+  const t = types[Math.floor(Math.random()*types.length)];
+  state.enemies.push({
+    x: 30 + Math.random()*(W-60), y: -30, ...t,
+    cd: Math.random()*60, hp: t.hp + Math.floor(state.stage/2)
+  });
+}
+
+function spawnBoss() {
+  state.enemies.push({
+    x: W/2, y: -60, hp: 50 + state.stage*20, speed: 0.3, r: 50,
+    fireRate: 30, color:'#5a3030', score: 1000, boss: true, cd: 60,
+  });
+  state.bossActive = true;
+}
+
+function tick() {
+  if (!state || !state.running) return;
+  // 이동
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft'] || keys['a']) dx = -1;
+  if (keys['ArrowRight']|| keys['d']) dx = 1;
+  if (keys['ArrowUp']   || keys['w']) dy = -1;
+  if (keys['ArrowDown'] || keys['s']) dy = 1;
+  if (joy.active) { dx = joy.dx; dy = joy.dy; }
+  state.player.x += dx * 5;
+  state.player.y += dy * 5;
+  state.player.x = Math.max(20, Math.min(W-20, state.player.x));
+  state.player.y = Math.max(30, Math.min(H-30, state.player.y));
+
+  // 발사
+  if ((keys[' '] || firing) && state.player.cd <= 0) {
+    fire();
+    state.player.cd = picked.rate;
+  }
+  if (state.player.cd > 0) state.player.cd--;
+
+  // 적 스폰
+  state.spawnTimer++;
+  if (!state.bossActive) {
+    const interval = Math.max(20, 60 - state.stage*5);
+    if (state.spawnTimer > interval) {
+      spawnEnemy(); state.spawnTimer = 0;
+    }
+    if (state.score >= state.stage * 800) {
+      spawnBoss();
+    }
+  }
+
+  // 총알 업데이트
+  state.bullets = state.bullets.filter(b => {
+    b.x += b.vx; b.y += b.vy;
+    return b.y > -10 && b.x > -10 && b.x < W+10;
+  });
+  state.eBullets = state.eBullets.filter(b => {
+    b.x += b.vx; b.y += b.vy;
+    return b.y < H+10 && b.x > -10 && b.x < W+10;
+  });
+
+  // 적 업데이트
+  state.enemies.forEach(e => {
+    e.y += e.speed;
+    e.cd--;
+    if (e.cd <= 0) {
+      const ang = Math.atan2(state.player.y - e.y, state.player.x - e.x);
+      state.eBullets.push({x: e.x, y: e.y, vx: Math.cos(ang)*3, vy: Math.sin(ang)*3});
+      e.cd = e.fireRate;
+      if (e.boss) {
+        // 보스 부채꼴 발사
+        for (let i = -2; i <= 2; i++) {
+          state.eBullets.push({x: e.x, y: e.y, vx: Math.cos(ang+i*0.2)*3, vy: Math.sin(ang+i*0.2)*3});
+        }
+      }
+    }
+  });
+
+  // 충돌 — 총알 vs 적
+  for (const b of state.bullets) {
+    for (const e of state.enemies) {
+      const dx = b.x - e.x, dy = b.y - e.y;
+      if (Math.sqrt(dx*dx+dy*dy) < e.r) {
+        e.hp -= picked.dmg;
+        b.dead = true;
+        explode(b.x, b.y, picked.col);
+        if (e.hp <= 0) {
+          e.dead = true;
+          state.score += e.score;
+          explode(e.x, e.y, e.color, 12);
+          if (e.boss) {
+            state.bossActive = false;
+            state.stage++;
+          }
+        }
+        break;
+      }
+    }
+  }
+  state.bullets = state.bullets.filter(b => !b.dead);
+  state.enemies = state.enemies.filter(e => !e.dead && e.y < H+50);
+
+  // 충돌 — 적탄 vs 플레이어
+  for (const b of state.eBullets) {
+    const dx = b.x - state.player.x, dy = b.y - state.player.y;
+    if (Math.sqrt(dx*dx+dy*dy) < state.player.r) {
+      state.player.hp -= 5;
+      b.dead = true;
+      explode(state.player.x, state.player.y, '#bf616a', 6);
+      if (state.player.hp <= 0) {
+        gameOver();
+        return;
+      }
+    }
+  }
+  state.eBullets = state.eBullets.filter(b => !b.dead);
+
+  // 적 본체 충돌
+  for (const e of state.enemies) {
+    const dx = e.x - state.player.x, dy = e.y - state.player.y;
+    if (Math.sqrt(dx*dx+dy*dy) < e.r + state.player.r) {
+      state.player.hp -= 15;
+      e.dead = true;
+      explode(e.x, e.y, '#bf616a', 10);
+      if (state.player.hp <= 0) { gameOver(); return; }
+    }
+  }
+  state.enemies = state.enemies.filter(e => !e.dead);
+
+  // 파티클
+  state.particles = state.particles.filter(p => {
+    p.x += p.vx; p.y += p.vy; p.life--;
+    return p.life > 0;
+  });
+
+  draw();
+  updateHUD();
+  requestAnimationFrame(tick);
+}
+
+function fire() {
+  const p = state.player;
+  if (picked.weapon === 'arrow') {
+    state.bullets.push({x: p.x, y: p.y-20, vx: 0, vy: -10});
+  } else if (picked.weapon === 'magic') {
+    state.bullets.push({x: p.x-8, y: p.y-15, vx: -1, vy: -9});
+    state.bullets.push({x: p.x+8, y: p.y-15, vx: 1, vy: -9});
+  } else if (picked.weapon === 'beam') {
+    state.bullets.push({x: p.x, y: p.y-20, vx: -0.5, vy: -12});
+    state.bullets.push({x: p.x, y: p.y-20, vx: 0.5, vy: -12});
+  }
+}
+
+function explode(x, y, col, n=5) {
+  for (let i=0;i<n;i++) {
+    const a = Math.random()*Math.PI*2, s = 1 + Math.random()*3;
+    state.particles.push({x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life: 20, col});
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // 배경 별
+  ctx.fillStyle = '#fff';
+  const t = Date.now()*0.001;
+  for (let i = 0; i < 30; i++) {
+    const x = (i*73)%W;
+    const y = ((i*47 + t*40)%H);
+    ctx.fillRect(x, y, 1, 2);
+  }
+  // 적
+  for (const e of state.enemies) {
+    ctx.fillStyle = e.color;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2); ctx.fill();
+    if (e.boss) {
+      // 보스 HP 바
+      ctx.fillStyle = '#bf616a';
+      const w = 200, h = 6;
+      ctx.fillRect((W-w)/2, 50, w, h);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect((W-w)/2, 50, w * (e.hp / (50 + state.stage*20)), h);
+    }
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  // 적탄
+  ctx.fillStyle = '#ff6060';
+  for (const b of state.eBullets) {
+    ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI*2); ctx.fill();
+  }
+  // 아군탄
+  ctx.fillStyle = picked.col;
+  for (const b of state.bullets) {
+    ctx.fillRect(b.x-2, b.y-8, 4, 12);
+  }
+  // 플레이어 (캐릭터 이미지 원형 클립)
+  const img = imgs[picked.id];
+  if (img && img.complete && img.width > 0) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(state.player.x, state.player.y, state.player.r, 0, Math.PI*2); ctx.clip();
+    ctx.drawImage(img, state.player.x-state.player.r, state.player.y-state.player.r, state.player.r*2, state.player.r*2);
+    ctx.restore();
+  }
+  ctx.strokeStyle = picked.col; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(state.player.x, state.player.y, state.player.r, 0, Math.PI*2); ctx.stroke();
+  // 파티클
+  for (const p of state.particles) {
+    ctx.fillStyle = p.col;
+    ctx.globalAlpha = p.life/20;
+    ctx.fillRect(p.x-1, p.y-1, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function updateHUD() {
+  document.getElementById('score').textContent = state.score;
+  document.getElementById('hp').textContent = state.player.hp;
+  document.getElementById('stage').textContent = state.stage;
+}
+
+function gameOver() {
+  state.running = false;
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `<h2>💀 격추됨</h2><img src="cards/${picked.id}.png" style="width:160px;border-radius:8px;opacity:0.7"><p style="color:#a89878">최종 ${state.score} · 스테이지 ${state.stage}</p><button onclick="location.reload()">다시</button>`;
+  ov.classList.add('show');
+}
+
+// 입력
+document.addEventListener('keydown', e => { keys[e.key] = true; });
+document.addEventListener('keyup',   e => { keys[e.key] = false; });
+
+const jk = document.getElementById('joystick');
+const knob = document.getElementById('knob');
+function setJoy(cx, cy) {
+  const r = jk.getBoundingClientRect();
+  const center = {x: r.left+60, y: r.top+60};
+  let dx = cx - center.x, dy = cy - center.y;
+  const d = Math.sqrt(dx*dx+dy*dy), max = 50;
+  if (d > max) { dx = dx/d*max; dy = dy/d*max; }
+  knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  joy.dx = dx/max; joy.dy = dy/max; joy.active = true;
+}
+jk.addEventListener('touchstart', e => { setJoy(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }, {passive:false});
+jk.addEventListener('touchmove',  e => { setJoy(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }, {passive:false});
+jk.addEventListener('touchend',   () => { joy.active=false; joy.dx=0; joy.dy=0; knob.style.transform=''; });
+jk.addEventListener('mousedown',  e => { setJoy(e.clientX, e.clientY); });
+document.addEventListener('mousemove', e => { if (joy.active) setJoy(e.clientX, e.clientY); });
+document.addEventListener('mouseup',   () => { joy.active=false; joy.dx=0; joy.dy=0; knob.style.transform=''; });
+
+const fb = document.getElementById('fire-btn');
+fb.addEventListener('touchstart', e => { firing=true; e.preventDefault(); }, {passive:false});
+fb.addEventListener('touchend',   () => { firing=false; });
+fb.addEventListener('mousedown',  () => { firing=true; });
+fb.addEventListener('mouseup',    () => { firing=false; });
+
+document.getElementById('overlay-btn').addEventListener('click', newGame);
+document.getElementById('btn-new').addEventListener('click', () => location.reload());
+</script>
+</body>
+</html>

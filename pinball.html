@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>에스카르타 핀볼</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{background:#000;color:#e2d5b8;font-family:'Noto Sans KR',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center;touch-action:none}
+header{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 14px;background:rgba(15,13,9,0.85);border-bottom:1px solid #5a4030;z-index:30;font-size:12px}
+header b{color:#fbbf24;font-size:14px;letter-spacing:2px}
+header .stats{display:flex;gap:14px}
+header button{background:#2d2620;color:#e2d5b8;border:1px solid #5a4030;padding:5px 10px;border-radius:4px;font-size:11px}
+
+canvas{display:block;background:radial-gradient(ellipse at top,#2d2620,#0a0805);box-shadow:0 0 30px rgba(251,191,36,0.2);max-width:100%;max-height:100vh}
+
+#hud{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-end;padding:8px;z-index:20;pointer-events:none}
+.flipper-tap{flex:1;height:120px;background:rgba(251,191,36,0.15);border:2px solid rgba(251,191,36,0.5);border-radius:8px;margin:4px;display:flex;align-items:center;justify-content:center;color:#fbbf24;font-size:13px;letter-spacing:2px;pointer-events:auto;font-weight:bold}
+.flipper-tap.active{background:rgba(251,191,36,0.4);box-shadow:inset 0 0 20px #fbbf24}
+
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;z-index:50;text-align:center;padding:20px}
+#overlay.show{display:flex}
+#overlay h2{color:#fbbf24;font-size:24px}
+#overlay button{background:#1d4ed8;color:#fff;border:0;padding:12px 22px;border-radius:6px;font-size:15px;cursor:pointer}
+.help{font-size:11px;color:#a89878;line-height:1.6;max-width:280px}
+</style>
+</head>
+<body>
+<header>
+  <b>🎯 핀볼</b>
+  <div class="stats">
+    <span>점수 <b id="score">0</b></span>
+    <span>공 <b id="balls">3</b></span>
+    <span>HI <b id="hi">0</b></span>
+  </div>
+  <button id="btn-new">새</button>
+</header>
+
+<canvas id="cv" width="420" height="700"></canvas>
+
+<div id="hud">
+  <div class="flipper-tap" id="flipL">◀ 좌</div>
+  <div class="flipper-tap" id="flipR">우 ▶</div>
+</div>
+
+<div id="overlay" class="show">
+  <h2>🎯 에스카르타 핀볼</h2>
+  <p class="help">
+    좌우 화살표 키 또는 화면 양쪽 탭 → 플리퍼 작동<br>
+    공이 떨어지면 플리퍼로 위로 튕겨라!<br>
+    캐릭터 객체에 박으면 보너스
+  </p>
+  <button id="overlay-btn">시작</button>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+const HI_KEY = 'escarta_pinball_hi';
+
+const CHAR_TARGETS = [
+  {id:'01_hanyujin', x:90,  y:180, r:32, hits:0, color:'#88c0d0'},
+  {id:'07_nilas',    x:330, y:180, r:32, hits:0, color:'#d4a857'},
+  {id:'09_old_raven',x:210, y:120, r:38, hits:0, color:'#bf616a'},
+];
+
+const imgs = {};
+for (const t of CHAR_TARGETS) {
+  imgs[t.id] = new Image();
+  imgs[t.id].src = `cards/${t.id}.png`;
+}
+
+let state;
+function newGame() {
+  state = {
+    ball: {x: W-30, y: H-150, vx: 0, vy: 0, alive: false, launched: false},
+    flipL: {angle: -0.6, target: -0.6, x: 130, y: H-110, len: 80, side: 'L'},
+    flipR: {angle: 0.6,  target: 0.6,  x: W-130, y: H-110, len: 80, side: 'R'},
+    score: 0, balls: 3, running: true,
+    targets: CHAR_TARGETS.map(t => ({...t, hits: 0})),
+    msg: '발사: 우측 슈터 (Space 또는 탭)',
+  };
+  document.getElementById('overlay').classList.remove('show');
+  updateHUD();
+  requestAnimationFrame(tick);
+}
+
+function shoot() {
+  if (!state || state.ball.launched || state.balls <= 0) return;
+  state.ball.launched = true;
+  state.ball.alive = true;
+  state.ball.vx = -2;
+  state.ball.vy = -10 - Math.random()*4;
+}
+
+function resetBall() {
+  state.ball.x = W - 30;
+  state.ball.y = H - 150;
+  state.ball.vx = 0; state.ball.vy = 0;
+  state.ball.alive = false;
+  state.ball.launched = false;
+}
+
+function tick() {
+  if (!state || !state.running) return;
+  // 물리
+  if (state.ball.alive) {
+    state.ball.vy += 0.18;  // 중력
+    state.ball.x += state.ball.vx;
+    state.ball.y += state.ball.vy;
+    // 벽
+    if (state.ball.x < 15) { state.ball.x = 15; state.ball.vx = -state.ball.vx*0.9; }
+    if (state.ball.x > W-15) { state.ball.x = W-15; state.ball.vx = -state.ball.vx*0.9; }
+    if (state.ball.y < 30) { state.ball.y = 30; state.ball.vy = -state.ball.vy*0.9; }
+    // 슈터 라인 (우측 30px wide 채널, y > H-180 부터)
+    if (state.ball.x > W-50 && state.ball.y > H-180 && state.ball.y < H-30 && !state.ball.launched) {
+      state.ball.x = W-30;
+    }
+    // 플리퍼 충돌
+    for (const f of [state.flipL, state.flipR]) {
+      const tipX = f.x + Math.cos(f.angle) * f.len * (f.side==='L'?1:-1);
+      const tipY = f.y + Math.sin(f.angle) * f.len;
+      // 단순화: 플리퍼 끝점과 공 거리 < 12
+      const dx = state.ball.x - tipX, dy = state.ball.y - tipY;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 18) {
+        // 위로 튕김
+        const nx = dx/d, ny = dy/d;
+        const dot = state.ball.vx*nx + state.ball.vy*ny;
+        state.ball.vx -= 2*dot*nx;
+        state.ball.vy -= 2*dot*ny;
+        // 플리퍼가 위로 차는 중이면 추가 추진
+        if (f.target < -0.4 && f.side === 'L' || f.target > 0.4 && f.side === 'R') {
+          state.ball.vy -= 8;
+          state.ball.vx += (f.side==='L'?2:-2);
+        }
+        state.score += 5;
+      }
+      // 플리퍼 베이스 충돌 (단순)
+      const dx2 = state.ball.x - f.x, dy2 = state.ball.y - f.y;
+      if (Math.sqrt(dx2*dx2+dy2*dy2) < 16) {
+        state.ball.vy = -Math.abs(state.ball.vy);
+        state.score += 2;
+      }
+    }
+    // 타겟 (캐릭터) 충돌
+    for (const t of state.targets) {
+      const dx = state.ball.x - t.x, dy = state.ball.y - t.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < t.r + 10) {
+        const nx = dx/d, ny = dy/d;
+        const dot = state.ball.vx*nx + state.ball.vy*ny;
+        state.ball.vx -= 2*dot*nx;
+        state.ball.vy -= 2*dot*ny;
+        t.hits++;
+        state.score += 100;
+        state.msg = '+100';
+      }
+    }
+    // 바닥 — 공 잃음
+    if (state.ball.y > H+30) {
+      state.balls--;
+      if (state.balls <= 0) {
+        gameOver();
+        return;
+      }
+      resetBall();
+    }
+  }
+  // 플리퍼 각도 보간
+  for (const f of [state.flipL, state.flipR]) {
+    f.angle += (f.target - f.angle) * 0.4;
+  }
+  draw();
+  updateHUD();
+  requestAnimationFrame(tick);
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // 보드 배경
+  ctx.fillStyle = '#1a1612';
+  ctx.fillRect(0, 0, W, H);
+  // 타겟 (캐릭터)
+  for (const t of state.targets) {
+    const img = imgs[t.id];
+    if (img.complete && img.width > 0) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI*2); ctx.clip();
+      ctx.drawImage(img, t.x-t.r, t.y-t.r, t.r*2, t.r*2);
+      ctx.restore();
+    }
+    ctx.strokeStyle = t.color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '11px Arial'; ctx.textAlign = 'center';
+    ctx.fillText(t.hits, t.x, t.y+t.r+14);
+  }
+  // 슈터 채널 (우측)
+  ctx.fillStyle = '#3a2520';
+  ctx.fillRect(W-50, H-200, 35, 200);
+  ctx.fillStyle = '#bf616a';
+  ctx.fillRect(W-45, H-30, 25, 8);
+  // 플리퍼
+  for (const f of [state.flipL, state.flipR]) {
+    const tipX = f.x + Math.cos(f.angle) * f.len * (f.side==='L'?1:-1);
+    const tipY = f.y + Math.sin(f.angle) * f.len;
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(tipX, tipY); ctx.stroke();
+    ctx.fillStyle = '#d4a857';
+    ctx.beginPath(); ctx.arc(f.x, f.y, 7, 0, Math.PI*2); ctx.fill();
+  }
+  // 공
+  if (state.ball.alive || !state.ball.launched) {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(state.ball.x, state.ball.y, 10, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#88c0d0'; ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  // 메시지
+  if (!state.ball.launched && state.balls > 0) {
+    ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Space / 우측 탭 → 발사', W/2, H/2);
+  }
+}
+
+function updateHUD() {
+  if (!state) return;
+  document.getElementById('score').textContent = state.score;
+  document.getElementById('balls').textContent = state.balls;
+  const hi = +localStorage.getItem(HI_KEY) || 0;
+  document.getElementById('hi').textContent = hi;
+}
+
+function gameOver() {
+  const hi = +localStorage.getItem(HI_KEY) || 0;
+  if (state.score > hi) localStorage.setItem(HI_KEY, state.score);
+  state.running = false;
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `<h2>🎯 게임 종료</h2><p style="color:#a89878">최종 ${state.score} ${state.score>hi?'<br>🏆 신기록!':''}</p><button onclick="location.reload()">다시</button>`;
+  ov.classList.add('show');
+}
+
+// 입력
+function press(side, on) {
+  if (!state) return;
+  if (side === 'L') state.flipL.target = on ? -1.4 : -0.6;
+  if (side === 'R') state.flipR.target = on ? 1.4 : 0.6;
+  document.getElementById('flip'+side).classList.toggle('active', on);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') press('L', true);
+  if (e.key === 'ArrowRight') press('R', true);
+  if (e.key === ' ') shoot();
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft') press('L', false);
+  if (e.key === 'ArrowRight') press('R', false);
+});
+for (const side of ['L','R']) {
+  const el = document.getElementById('flip'+side);
+  el.addEventListener('touchstart', e => { press(side, true); e.preventDefault(); }, {passive:false});
+  el.addEventListener('touchend',   e => { press(side, false); e.preventDefault(); }, {passive:false});
+  el.addEventListener('mousedown',  () => press(side, true));
+  el.addEventListener('mouseup',    () => press(side, false));
+  el.addEventListener('mouseleave', () => press(side, false));
+}
+cv.addEventListener('click', shoot);
+cv.addEventListener('touchstart', e => {
+  const r = cv.getBoundingClientRect();
+  const x = e.touches[0].clientX - r.left;
+  if (x > W*0.6) shoot();
+});
+
+document.getElementById('overlay-btn').addEventListener('click', newGame);
+document.getElementById('btn-new').addEventListener('click', () => location.reload());
+
+const hi = +localStorage.getItem(HI_KEY) || 0;
+document.getElementById('hi').textContent = hi;
+</script>
+</body>
+</html>
